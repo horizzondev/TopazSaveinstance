@@ -2963,6 +2963,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 	end
 
 	for genericNames, actualNames in string.gmatch(code, "local ([v%d, ]+)%s*=%s*[^\n]*%-%-%[%[%s*Names:%s*([%w_, ]+)%s*%]%]") do
+	if not genericNames or not actualNames then continue end 
 		local genList = {}
 		local actList = {}
 		for name in string.gmatch(genericNames, "v%d+") do
