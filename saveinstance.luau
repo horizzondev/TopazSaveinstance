@@ -2950,6 +2950,11 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		code = string.gsub(code, "%-%-%[%[.-%]%]", "")
 		return code
 	end
+
+	local function rescriptcode(code)
+	--// WIP
+	end
+
 	if getscriptbytecode then
 		getbytecode = construct_TimeoutHandler(3, getscriptbytecode) -- ? Solara fix
 	end
