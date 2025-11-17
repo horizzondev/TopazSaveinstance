@@ -2878,6 +2878,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 	--// If you wanna get the uhh like function names and upvaules go to the guy below me
 	end
 
+	--// work on this later
 	local function johnpork(code) --// this took way too long and I CANT test this so if this breaks then we're FUCKED
 	code = string.gsub(code, 
 		"local function (v%d+)%((.-)%)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]", --// Thanks to hex for doing this cuz id actually rather kill myself than type this bullshit
