@@ -2878,31 +2878,35 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 	--// If you wanna get the uhh like function names and upvaules go to the guy below me
 	end
 
-	local function johnpork(code) --// this took way too long and I CANT test this so if this breaks then we're FUCKED
+	local function johnpork(code) 
 	code = string.gsub(code, 
-		"local function (v%d+)%((.-)%)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]", --// Thanks to hex for doing this cuz id actually rather kill myself than type this bullshit
+		"local function (v%d+)%((.-)%)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]",
 		function(genericName, params, actualName)
 			return string.format("local function %s(%s)", actualName, params)
 		end
 	) 
+
 	code = string.gsub(code,
 		"local function (v%d+)%((.-)%)%s*%-%-%[%[%s*Line:%s*%d+%s*%]%]%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]",
 		function(genericName, params, actualName)
 			return string.format("local function %s(%s)", actualName, params)
 		end
 	)
+
 	code = string.gsub(code,
 		"local (v%d+)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]",
 		function(genericName, actualName)
 			return string.format("local %s", actualName)
 		end
 	)
+
 	code = string.gsub(code,
 		"local (v%d+)%s*(=%s*[^\n]+)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]",
 		function(genericName, assignment, actualName)
 			return string.format("local %s%s", actualName, assignment)
 		end
 	)
+
 	code = string.gsub(code,
 		"local ([v%d, ]+)%s*%-%-%[%[%s*Names:%s*([%w_, ]+)%s*%]%]",
 		function(genericNames, actualNames)
@@ -2913,6 +2917,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			return string.format("local %s", table.concat(actualNamesList, ", "))
 		end
 	)
+
 	code = string.gsub(code,
 		"local ([v%d, ]+)%s*(=%s*[^\n]+)%s*%-%-%[%[%s*Names:%s*([%w_, ]+)%s*%]%]",
 		function(genericNames, assignment, actualNames)
@@ -2923,12 +2928,14 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			return string.format("local %s%s", table.concat(actualNamesList, ", "), assignment)
 		end
 	)
+
 	code = string.gsub(code,
 		"for (v%d+)%s*(=%s*[^\n]+do)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]",
 		function(genericName, forRest, actualName)
 			return string.format("for %s%s", actualName, forRest)
 		end
 	)
+
 	code = string.gsub(code,
 		"for ([v%d, ]+)%s*(in%s*[^\n]+do)%s*%-%-%[%[%s*Names:%s*([%w_, ]+)%s*%]%]",
 		function(genericNames, forRest, actualNames)
@@ -2939,6 +2946,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			return string.format("for %s %s", table.concat(actualNamesList, ", "), forRest)
 		end
 	)
+
 	code = string.gsub(code,
 		"%(([v%d, ]+)%)%s*%-%-%[%[%s*Params:%s*([%w_, ]+)%s*%]%]",
 		function(genericParams, actualParams)
@@ -2948,25 +2956,29 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			end
 			return string.format("(%s)", table.concat(actualParamsList, ", "))
 		end
-	)  --// I copied all of this straight from vscode without testing idk if this works AT ALL please test this later
+	) 
 	local varMapping = {}
 	for genericName, actualName in string.gmatch(code, "local (v%d+)%s*=%s*[^\n]*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
 		varMapping[genericName] = actualName
 	end
+
 	for genericNames, actualNames in string.gmatch(code, "local ([v%d, ]+)%s*=%s*[^\n]*%-%-%[%[%s*Names:%s*([%w_, ]+)%s*%]%]") do
 		local genList = {}
 		local actList = {}
 		for name in string.gmatch(genericNames, "v%d+") do
 			table.insert(genList, name)
 		end
+
 		for name in string.gmatch(actualNames, "[%w_]+") do
 			table.insert(actList, name)
 		end
+
 		for i = 1, #genList do
 			if actList[i] then
 				varMapping[genList[i]] = actList[i]
 			end
 		end
+
 	end
 	code = string.gsub(code, "%s*%-%- upvalues:[^\n]*\n?", "")
 	code = string.gsub(code, "%-%-%[%[.-%]%]", "")
@@ -2978,7 +2990,6 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		return #a.gen > #b.gen 
 	end)
 	for _, pair in ipairs(sortedVars) do
-		-- Match variable names as whole words (with word boundaries)
 		code = string.gsub(code, "%f[%w]" .. pair.gen .. "%f[%W]", pair.act)
 	end
 	return code
