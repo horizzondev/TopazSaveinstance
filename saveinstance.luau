@@ -2867,6 +2867,12 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 	end
 
 	local getbytecode
+
+	local function rescriptcode(code)
+	--// This fixes multible checks and upvaules
+	--// Uhh this is a WIP Rn tho
+	end
+
 	local function johnpork(code) --// dude im gonna fucking blow my brains out if this doesnt work
 		code = string.gsub(code, 
 			"local function (v%d+)%((.-)%)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]", --// thank you hex for finding this! :D
@@ -2949,10 +2955,6 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		
 		code = string.gsub(code, "%-%-%[%[.-%]%]", "")
 		return code
-	end
-
-	local function rescriptcode(code)
-	--// WIP
 	end
 
 	if getscriptbytecode then
