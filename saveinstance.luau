@@ -2878,7 +2878,6 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 	--// If you wanna get the uhh like function names and upvaules go to the guy below me
 	end
 
-	--// work on this later
 	local function johnpork(code) --// this took way too long and I CANT test this so if this breaks then we're FUCKED
 	code = string.gsub(code, 
 		"local function (v%d+)%((.-)%)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]", --// Thanks to hex for doing this cuz id actually rather kill myself than type this bullshit
@@ -2949,7 +2948,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			end
 			return string.format("(%s)", table.concat(actualParamsList, ", "))
 		end
-	)  --// I copied most of this from vscode lmao idk if this works AT ALL please test this later
+	)  --// I copied all of this straight from vscode without testing idk if this works AT ALL please test this later
 	local varMapping = {} --// I forked this from a dif repo so def recode this in the future cuz its kinda ass
 	for genericName, actualName in string.gmatch(code, "local (v%d+)%s*=%s*[^\n]*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
 		varMapping[genericName] = actualName
