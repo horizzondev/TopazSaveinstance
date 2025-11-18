@@ -6,11 +6,11 @@ A script for Roblox executors that converts the game you are in to a file you ca
 
 ```lua
 local Params = {
- RepoURL = "https://raw.githubusercontent.com/Devraj2010isme/BetterSaveinstance/refs/heads/main/",
+ RepoURL = "https://raw.githubusercontent.com/Team-Gauntlet/TopazSaveinstance/refs/heads/main/",
  SSI = "saveinstance",
 }
 local synsaveinstance = loadstring(game:HttpGet(Params.RepoURL .. Params.SSI .. ".luau", true), Params.SSI)()
-local Options = {} -- Documentation here: https://github.com/Devraj2010isme/BetterSaveinstance/blob/main/README.md
+local Options = {} -- Documentation here: https://github.com/Team-Gauntlet/TopazSaveInstance/blob/main/README.md
 synsaveinstance(Options)
 ```
 # Differences From the Original
@@ -134,7 +134,7 @@ All options are case insensitive.
   - Default: true
 - decomptype: `string`
   - "custom" - for a built-in custom decompiler.
-  - Uses Konstant 2.1, locally hosted instead of the API to increase speed. ([Konstant Discord Server](https://discord.gg/brNTY8nX8t), [Konstant Decompiled Source Code](https://raw.githubusercontent.com/Devraj2010isme/BetterSaveinstance/refs/heads/main/Dependencies/Konstant%20V2.1.luau))
+  - Uses Konstant 2.1, locally hosted instead of the API to increase speed. ([Konstant Discord Server](https://discord.gg/brNTY8nX8t), [Konstant Decompiled Source Code](https://raw.githubusercontent.com/Team-Gauntlet/TopazSaveinstance/refs/heads/main/Dependencies/Konstant%20V2.1.luau))
   - Default: Your executor's decompiler, if available. Otherwise uses "custom" if not.
 - timeout: `number`
   - If the decompilation run time exceeds this value it gets cancelled.
