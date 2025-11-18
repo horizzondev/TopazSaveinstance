@@ -2364,20 +2364,10 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			end
 		end
 
-
+		-- TODO: Merge BaseWrap & Attachment & AdPortal fix (put all under MeshPart container)
+		-- TODO?:
 		-- DebuggerWatch DebuggerWatch must be a child of ScriptDebugger
 		-- PluginAction Parent of PluginAction must be Plugin or PluginMenu that created it!
-		local function construct_GenericPartFix(containerClassName)
-			return construct_NilinstanceFix(
-				containerClassName .. " must be parented to a Part or BasePart",
-				"Part"
-			)
-		end
-
-		OPTIONS.NilInstancesFixes.AdPortal = construct_GenericPartFix("AdPortal")
-		OPTIONS.NilInstancesFixes.Attachment = construct_GenericPartFix("Attachment")
-		OPTIONS.NilInstancesFixes.BaseWrap = construct_NilinstanceFix("BaseWrap must be parented to a MeshPart", "MeshPart")
-
 		OPTIONS.NilInstancesFixes.Animator = 
 			construct_NilinstanceFix("Animator has to be placed under Humanoid or AnimationController", "AnimationController")
 		OPTIONS.NilInstancesFixes.AdPortal = 
@@ -2889,188 +2879,198 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		end
 
 		local success, result = pcall(function()
-			local contextMapping = {}
-			local serviceNames = {}
-			local requireNames = {}
+			local varMapping = {}
+			local usedNames = {}
+			local functionParams = {}
+
 			local knownServices = {
-				"Workspace", "Players", "Lighting", "ReplicatedStorage", "ReplicatedFirst",
-				"ServerStorage", "ServerScriptService", "StarterGui", "StarterPack", 
-				"StarterPlayer", "Teams", "SoundService", "Chat", "LocalizationService",
-				"TestService", "InsertService", "CollectionService", "PhysicsService",
-				"BadgeService", "PointsService", "AdService", "NotificationService",
-				"GamePassService", "MarketplaceService", "TeleportService", "GroupService",
-				"FriendService", "RunService", "UserInputService", "ContextActionService",
-				"HttpService", "DataStoreService", "MessagingService", "TweenService",
-				"PathfindingService", "ProximityPromptService", "TextService", "VoiceChatService",
-				"MaterialService", "TextChatService", "AvatarEditorService", "AssetService",
-				"PolicyService", "JointsService", "ContentProvider", "KeyframeSequenceProvider",
-				"NetworkClient", "NetworkServer", "LogService", "Stats", "VirtualUser",
-				"GuiService", "CoreGui", "StarterGui", "SocialService", "VirtualInputManager"
+				Workspace = true, Players = true, Lighting = true, ReplicatedStorage = true,
+				ReplicatedFirst = true, ServerStorage = true, ServerScriptService = true,
+				StarterGui = true, StarterPack = true, StarterPlayer = true, Teams = true,
+				SoundService = true, Chat = true, TextChatService = true, RunService = true,
+				TweenService = true, UserInputService = true, HttpService = true, Debris = true
 			}
 
+			local function getUniqueName(base)
+				if not usedNames[base] then
+					usedNames[base] = true
+					return base
+				end
+				local counter = 2
+				while usedNames[base .. counter] do
+					counter = counter + 1
+				end
+				usedNames[base .. counter] = true
+				return base .. counter
+			end
+
 			for varName, serviceName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*game:GetService%s*%(%s*[\"']([%w_]+)[\"']%s*%)") do
-				contextMapping[varName] = serviceName
-				serviceNames[varName] = serviceName
+				if knownServices[serviceName] then
+					varMapping[varName] = getUniqueName(serviceName)
+				end
 			end
 
 			for varName, serviceName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*game%.([%w_]+)") do
-				-- Verify it's a known service
-				for _, known in ipairs(knownServices) do
-					if serviceName == known then
-						contextMapping[varName] = serviceName
-						serviceNames[varName] = serviceName
-						break
+				if knownServices[serviceName] then
+					varMapping[varName] = getUniqueName(serviceName)
+				end
+			end
+
+			for varName, modulePath in string.gmatch(code, "local%s+([%w_]+)%s*=%s*require%s*%(") do
+				local fullRequire = string.match(code, "local%s+" .. varName .. "%s*=%s*require%s*%([^%)]+%.([%w_]+)%s*%)")
+				if fullRequire then
+					varMapping[varName] = getUniqueName(fullRequire)
+				end
+			end
+
+			local firstLine = string.match(code, "^[^\n]+")
+			if firstLine then
+				local moduleVar = string.match(firstLine, "^%s*local%s+([%w_]+)%s*=%s*{")
+				if moduleVar then
+					local returnLine = string.match(code, "return%s+" .. moduleVar .. "%s*;?%s*$")
+					if returnLine then
+						varMapping[moduleVar] = "module"
 					end
 				end
 			end
 
-			for varName, modulePath in string.gmatch(code, "local%s+([%w_]+)%s*=%s*require%s*%(%s*([%w_.]+)%s*%)") do
-				-- Extract the last part of the path as the module name
-				local moduleName = string.match(modulePath, "([%w_]+)$")
-				if moduleName then
-					contextMapping[varName] = moduleName
-					requireNames[varName] = moduleName
+			for funcDef in string.gmatch(code, "function%s*%b()") do
+				local params = string.match(funcDef, "%((.-)%)")
+				if params then
+					local paramList = {}
+					for param in string.gmatch(params, "([%w_]+)") do
+						table.insert(paramList, param)
+					end
+
+					if #paramList > 0 then
+						local firstParam = paramList[1]
+						if string.match(firstParam, "^v%d+$") or string.match(firstParam, "^arg%d+$") then
+							functionParams[firstParam] = true
+						end
+					end
 				end
+			end
+
+			for param in pairs(functionParams) do
+				varMapping[param] = "self"
 			end
 
 			for varName, className in string.gmatch(code, "local%s+([%w_]+)%s*=%s*Instance%.new%s*%(%s*[\"']([%w_]+)[\"']%s*%)") do
-				-- Use lowercase className for variable name (e.g., "Part" -> "part")
-				local varNameSuggestion = string.lower(string.sub(className, 1, 1)) .. string.sub(className, 2)
-				contextMapping[varName] = varNameSuggestion
+				local suggestion = string.lower(string.sub(className, 1, 1)) .. string.sub(className, 2)
+				varMapping[varName] = getUniqueName(suggestion)
 			end
 
 			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+%.Character") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "character"
+				if string.match(varName, "^v%d+$") or string.match(varName, "^l_") then
+					varMapping[varName] = getUniqueName("character")
 				end
 			end
 
-			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:FindFirstChild%s*%(%s*[\"']HumanoidRootPart[\"']%s*%)") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "rootPart"
+			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:Clone%s*%(") do
+				if string.match(varName, "^v%d+$") or string.match(varName, "^l_") then
+					varMapping[varName] = getUniqueName("clone")
 				end
 			end
 
-			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:FindFirstChildOfClass%s*%(%s*[\"']Humanoid[\"']%s*%)") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "humanoid"
+			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*{") do
+				if string.match(varName, "^v%d+$") and not varMapping[varName] then
+					varMapping[varName] = getUniqueName("data")
 				end
 			end
 
-			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:FindFirstChildOfClass%s*%(%s*[\"']Animator[\"']%s*%)") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "animator"
+			for i, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+pairs") do
+				if not varMapping[i] and string.match(i, "^[vk_]") then 
+					varMapping[i] = "key" 
+				end
+				if not varMapping[v] and string.match(v, "^v%d+$") then 
+					varMapping[v] = "value" 
 				end
 			end
 
-			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:LoadAnimation%s*%(") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "animation"
+			for i, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+ipairs") do
+				if not varMapping[i] and string.match(i, "^[vi_]") then 
+					varMapping[i] = "index" 
+				end
+				if not varMapping[v] and string.match(v, "^v%d+$") then 
+					varMapping[v] = "value" 
 				end
 			end
 
-			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*Instance%.new%s*%(%s*[\"']ProximityPrompt[\"']%s*%)") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "prompt"
-				end
-			end
-			for param in string.gmatch(code, "function%s*%([^%)]*%b()") do
-				local params = string.match(param, "%((.-)%)")
-				if params then
-					for p in string.gmatch(params, "([%w_]+)") do
-						if string.find(code, p .. "%.Character", 1, true) then
-							if not contextMapping[p] or string.match(contextMapping[p], "^[av]%d+") then
-								contextMapping[p] = "player"
-							end
-						end
-					end
-				end
-			end
-			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*{}") do
-				if string.find(code, varName .. "%[", 1, true) then
-					if not contextMapping[varName] then
-						local usage = string.match(code, varName .. "%[([%w_]+)%]%s*=%s*{")
-						if usage then
-							contextMapping[varName] = "data"
-						end
-					end
-				end
-			end
-			for k, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+pairs") do
-				if not contextMapping[k] then
-					contextMapping[k] = "key"
-				end
-				if not contextMapping[v] then
-					contextMapping[v] = "value"
-				end
-			end
-
-			for k, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+ipairs") do
-				if not contextMapping[k] then
-					contextMapping[k] = "index"
-				end
-				if not contextMapping[v] then
-					contextMapping[v] = "value"
-				end
-			end
 			for varName in string.gmatch(code, "for%s+([%w_]+)%s*=%s*") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "i"
+				if not varMapping[varName] and (string.match(varName, "^v%d+$") or varName == "_") then
+					varMapping[varName] = "i"
 				end
 			end
-			for varName in string.gmatch(code, "([%w_]+)%.Parent") do
-				if string.match(varName, "^[valt]%d+") and not contextMapping[varName] then
-					contextMapping[varName] = "instance"
-				end
-			end
-			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:[%w_]+:Connect%s*%(") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "connection"
-				end
-			end
-			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+%.[%w_]+:Connect%s*%(") do
-				if not contextMapping[varName] then
-					contextMapping[varName] = "connection"
-				end
-			end
+
 			local sortedMappings = {}
-			for varName, newName in pairs(contextMapping) do
-				table.insert(sortedMappings, {
-					old = varName,
-					new = newName,
-					priority = serviceNames[varName] and 3 or requireNames[varName] and 2 or 1,
-					length = #varName
-				})
+			for oldName, newName in pairs(varMapping) do
+				table.insert(sortedMappings, {old = oldName, new = newName, len = #oldName})
 			end
-
 			table.sort(sortedMappings, function(a, b)
-				if a.priority ~= b.priority then
-					return a.priority > b.priority
-				end
-				return a.length > b.length
+				return a.len > b.len
 			end)
-			for _, mapping in ipairs(sortedMappings) do
-				local old = mapping.old
-				local new = mapping.new
-				local escapedOld = string.gsub(old, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
 
-				code = string.gsub(code, "%f[%w_]" .. escapedOld .. "%f[^%w_]", new)
+			for _, mapping in ipairs(sortedMappings) do
+				local escapedOld = string.gsub(mapping.old, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+				code = string.gsub(code, "%f[%w_]" .. escapedOld .. "%f[^%w_]", mapping.new)
 			end
-			code = string.gsub(code, "%f[%w_](v)(%d+)%f[^%w_]", "var%2")
-			code = string.gsub(code, "%f[%w_](a)(%d+)%f[^%w_]", "arg%2")
-			code = string.gsub(code, "%f[%w_](l)(%d+)%f[^%w_]", "local%2")
-			code = string.gsub(code, "%f[%w_](t)(%d+)%f[^%w_]", "tbl%2")
-			local hasPlayer = string.find(code, "%f[%w_]player%f[^%w_]")
-			local hasPlayerCap = string.find(code, "%f[%w_]Player%f[^%w_]")
-			if hasPlayer and hasPlayerCap then
-				code = string.gsub(code, "local%s+Player%f[^%w_]", "local player")
+
+			code = string.gsub(code, 'game%["Run Service"%]', "game:GetService('RunService')")
+			code = string.gsub(code, 'game%.Debris', "game:GetService('Debris')")
+
+			local lines = {}
+			local indentLevel = 0
+			local indentChar = "\t"
+
+			for line in string.gmatch(code .. "\n", "([^\n]*)\n") do
+				local trimmed = string.gsub(line, "^%s+", "")
+				trimmed = string.gsub(trimmed, "%s+$", "")
+
+				if trimmed == "" then
+					table.insert(lines, "")
+				else
+					local shouldUnindent = string.match(trimmed, "^end[;,%)%s]") or 
+						string.match(trimmed, "^end$") or
+						string.match(trimmed, "^else") or 
+						string.match(trimmed, "^elseif") or
+						string.match(trimmed, "^until")
+
+					if shouldUnindent and indentLevel > 0 then
+						indentLevel = indentLevel - 1
+					end
+
+					table.insert(lines, string.rep(indentChar, indentLevel) .. trimmed)
+
+					local shouldIndent = string.match(trimmed, "then%s*$") or
+						string.match(trimmed, "do%s*$") or
+						string.match(trimmed, "repeat%s*$") or
+						(string.match(trimmed, "^function") and not string.match(trimmed, "end%s*$")) or
+						(string.match(trimmed, "=%s*function") and not string.match(trimmed, "end%s*$"))
+
+					if shouldIndent then
+						indentLevel = indentLevel + 1
+					end
+
+					if string.match(trimmed, "^else") or string.match(trimmed, "^elseif") then
+						indentLevel = indentLevel + 1
+					end
+				end
 			end
+
+			code = table.concat(lines, "\n")
+
+			code = string.gsub(code, "\n\n\n+", "\n\n")
+			code = string.gsub(code, "[ \t]+\n", "\n")
+			code = string.gsub(code, "[ \t]+$", "")
+			code = string.gsub(code, ";%s*\n", "\n")
+
 			return code
 		end)
+
 		if not success then
-			warn("Error during decompilation", result)
 			return code
 		end
+
 		return result
 	end
 	local function johnpork(code)
@@ -3573,21 +3573,15 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		return prop_list
 	end
 
-	local OverwriteValueTypes = {
-		BinaryString = "SharedString",
-	}
-
-	local function GetPropertiesTableFromInstance(instance, CustomClassName)
+	local function GetPropertiesTableFromInstance(instance, CustomClassName) -- for save_specific
 		local ClassName = CustomClassName or instance.ClassName
 		local PropertiesTable = {}
 		local proplist = inherited_properties[ClassName]
-
 		if not proplist then
 			proplist = GetInheritedProps(ClassName)
 			inherited_properties[ClassName] = proplist
 		end
-
-		for _, Property in proplist do
+		for _, Property in proplist do 
 			local PropertyName = Property.Name
 
 			if IgnoreProperties[PropertyName] then
@@ -3596,19 +3590,20 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 
 			local ValueType = Property.ValueType
 
-			if IgnoreSharedStrings and ValueType == "SharedString" then
+			if IgnoreSharedStrings and ValueType == "SharedString" then -- ? More info in Options
 				continue
 			end
 
 			local Special, Category, Optional = Property.Special, Property.Category, Property.Optional
+
 			local raw = ReadPropertyFull(instance, Property, PropertyName, Special, Category, Optional)
 
 			if raw == __BREAK then
 				continue
 			end
 
-			if SharedStringOverwrite and OverwriteValueTypes[ValueType] then
-				ValueType = OverwriteValueTypes[ValueType]
+			if SharedStringOverwrite and ValueType == "BinaryString" then -- TODO: Convert this to table if more types are added
+				ValueType = "SharedString"
 			end
 
 			if Category == "Enum" then
@@ -3617,15 +3612,10 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 				ValueType = "Class"
 			end
 
-			PropertiesTable[PropertyName] = {
-				raw = raw,
-				ValueType = ValueType,
-				Optional = Optional
-			}
+			PropertiesTable[PropertyName] = {raw = raw, ValueType = ValueType, Optional = Optional}
 		end
-
 		return PropertiesTable
-	end
+	end	
 
 	local function ReturnItem(className, instance)
 		return '<Item class="' .. className .. '" referent="' .. GetRef(instance) .. '"><Properties>' -- TODO: Ideally this shouldn't return <Properties> as well as the line below to close it IF  IgnorePropertiesOfNotScriptsOnScriptsMode is Enabled OR If all properties are default (reduces file size by at least 1.4%)
@@ -4376,309 +4366,310 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		save_cache(true)
 		do
 			-- ! Assuming we only write to file once hence why we only filter once
-			local LocalPlayer = service.Players.LocalPlayer
-			if LocalPlayer then
-				local userId = tostring(LocalPlayer.UserId)
-				local userName = LocalPlayer.Name
+			-- TODO This might cause issues on non-unique Usernames (ex. "Cake" if game is about cakes then everything supposedly related to your name will be replaced with "Roblox"); Certain UserIds might also affect numbers, like if your UserId is 2481848 and there is some number that goes like "1.248184818837" then that the matched part will be replaced with 1, potentially making the number incorrect.
+			-- TODO So for now it's best to keep this disabled by default
+			-- TODO It's also not smart to filter entire file string at the end as this might also affect decompiled scripts content, which has no way of containing any user-related information. It would be better to use gsub in string Descriptor and such
+			if Anonymous then
+				local LocalPlayer = service.Players.LocalPlayer
+				if LocalPlayer then
+					for _, chunk in chunks do
+						chunk.str = gsubCaseInsensitive(
+							string.gsub(chunk.str, LocalPlayer.UserId, Anonymous.UserId),
+							LocalPlayer.Name,
+							Anonymous.Name
+						)
+					end
+				end
+			end
 
-				local userIdPattern = "%f[%d]" .. userId .. "%f[%D]"
-				local userNamePattern = "%f[%w]" .. userName .. "%f[%W]"
-
+			local Callback = OPTIONS.Callback
+			if Callback then
+				local totalstr = header
 				for _, chunk in chunks do
-					chunk.str = string.gsub(chunk.str, userIdPattern, Anonymous.UserId)
-					chunk.str = gsubCaseInsensitive(chunk.str, userName, Anonymous.Name)
+					totalstr ..= chunk.str
 				end
-			end
-		end
+				Callback(totalstr, chunks, totalsize)
+			elseif OPTIONS.AlternativeWritefile and appendfile then
+				local SEGMENT_SIZE = 4145728 -- Celery has an arbitrary savefile/appendfile size limit of ~4MB for reasons unknown. This is a workaround to save the file in segments.
 
-		local Callback = OPTIONS.Callback
-		if Callback then
-			local totalstr = header
-			for _, chunk in chunks do
-				totalstr ..= chunk.str
-			end
-			Callback(totalstr, chunks, totalsize)
-		elseif OPTIONS.AlternativeWritefile and appendfile then
-			local SEGMENT_SIZE = 4145728 -- Celery has an arbitrary savefile/appendfile size limit of ~4MB for reasons unknown. This is a workaround to save the file in segments.
+				local totallen, currentlen = math.ceil(totalsize / SEGMENT_SIZE), 1
 
-			local totallen, currentlen = math.ceil(totalsize / SEGMENT_SIZE), 1
+				writefile(placename, header)
+				for _, chunk in chunks do
+					local length = math.ceil(chunk.size / SEGMENT_SIZE)
+					for i = 1, length do
+						local savestr = string.sub(chunk.str, (i - 1) * SEGMENT_SIZE + 1, i * SEGMENT_SIZE)
 
-			writefile(placename, header)
-			for _, chunk in chunks do
-				local length = math.ceil(chunk.size / SEGMENT_SIZE)
-				for i = 1, length do
-					local savestr = string.sub(chunk.str, (i - 1) * SEGMENT_SIZE + 1, i * SEGMENT_SIZE)
+						run_with_loading(
+							"Writing to File " .. math.round(currentlen / totallen * 100) .. "% (Depends on Exec)",
+							nil,
+							true,
+							appendfile,
+							placename,
+							savestr
+						)
+						currentlen += 1
 
-					run_with_loading(
-						"Writing to File " .. math.round(currentlen / totallen * 100) .. "% (Depends on Exec)",
-						nil,
-						true,
-						appendfile,
-						placename,
-						savestr
-					)
-					currentlen += 1
-
-					if i ~= length then
-						task.wait()
+						if i ~= length then
+							task.wait()
+						end
 					end
 				end
-			end
-		else
-			local totalstr = header
-			for _, chunk in chunks do
-				totalstr ..= chunk.str
-			end
-			run_with_loading(
-				"Writing " .. get_size_format() .. " to File (Depends on Exec)",
-				nil,
-				true,
-				writefile,
-				placename,
-				totalstr
-			)
-		end
-	end
-	table.clear(SharedStrings)
-end
-
-local Connections
-do
-	local Players = service.Players
-
-	if IgnoreList.Model ~= true then
-		Connections = {}
-		local function ignoreCharacter(player)
-			table.insert(
-				Connections,
-				player.CharacterAdded:Connect(function(character)
-					IgnoreList[character] = true
-				end)
-			)
-
-			local Character = player.Character
-			if Character then
-				IgnoreList[Character] = true
-			end
-		end
-
-		if OPTIONS.RemovePlayerCharacters then
-			table.insert(
-				Connections,
-				Players.PlayerAdded:Connect(function(player)
-					ignoreCharacter(player)
-				end)
-			)
-			for _, player in Players:GetPlayers() do
-				ignoreCharacter(player)
-			end
-		else
-			IgnoreNotArchivable = false -- TODO Bad solution (Characters are NotArchivable); Also make sure the next solution is compatible with IsolateLocalPlayerCharacter
-			if IsolateLocalPlayerCharacter then
-				task.spawn(function()
-					ignoreCharacter(GetLocalPlayer())
-				end)
-			end
-		end
-	end
-	if IsolateLocalPlayer and IgnoreList.Player ~= true then
-		task.spawn(function()
-			IgnoreList[GetLocalPlayer()] = true
-		end)
-	end
-end
-
-if IsolateStarterPlayer then
-	IgnoreList.StarterPlayer = false
-end
-
-if IsolatePlayers then
-	IgnoreList.Players = false
-end
-
-if OPTIONS.ShowStatus then
-	do
-		local Exists = GLOBAL_ENV._statustext
-		if Exists then
-			Exists:Destroy()
-		end
-	end
-
-	local StatusGui = Instance.new("ScreenGui")
-
-	GLOBAL_ENV._statustext = StatusGui
-
-	StatusGui.DisplayOrder = 2e9
-	pcall(function() -- ? Compatibility with level 2
-		StatusGui.OnTopOfCoreBlur = true
-	end)
-
-	StatusText = Instance.new("TextLabel")
-
-	StatusText.Text = "Saving..."
-
-	StatusText.BackgroundTransparency = 1
-	StatusText.Font = Enum.Font.Arcade
-	StatusText.AnchorPoint = Vector2.new(1)
-	StatusText.Position = UDim2.new(1)
-	StatusText.Size = UDim2.new(0.3, 0, 0, 20)
-
-	StatusText.TextColor3 = Color3.new(1, 1, 1)
-	StatusText.TextScaled = true
-	StatusText.TextStrokeTransparency = 0.7
-	StatusText.TextXAlignment = Enum.TextXAlignment.Right
-	StatusText.TextYAlignment = Enum.TextYAlignment.Top
-
-	StatusText.Parent = StatusGui
-
-	local function randomString()
-		local length = math.random(10, 20)
-		local randomarray = table.create(length)
-		for i = 1, length do
-			randomarray[i] = string.char(math.random(32, 126))
-		end
-		return table.concat(randomarray)
-	end
-
-	if global_container.gethui then
-		StatusGui.Name = randomString()
-		StatusGui.Parent = global_container.gethui()
-	else
-		if global_container.protectgui then
-			StatusGui.Name = randomString()
-			global_container.protectgui(StatusGui)
-			StatusGui.Parent = service.CoreGui
-		else
-			local RobloxGui = service.CoreGui:FindFirstChild("RobloxGui")
-			if RobloxGui then
-				StatusGui.Parent = RobloxGui
 			else
-				StatusGui.Name = randomString()
-				StatusGui.Parent = service.CoreGui
-			end
-		end
-	end
-end
-
-do
-	local SafeMode = OPTIONS.SafeMode
-	if SafeMode then
-		task.spawn(function()
-			local LocalPlayer = GetLocalPlayer()
-
-			local PlayerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-			if PlayerScripts then
-				local function construct_InstanceOverride(instance)
-					local children = instance:GetChildren()
-					InstancesOverrides[instance] = {
-						__Children = children,
-					}
-					for _, child in children do
-						construct_InstanceOverride(child)
-					end
+				local totalstr = header
+				for _, chunk in chunks do
+					totalstr ..= chunk.str
 				end
-				construct_InstanceOverride(PlayerScripts)
-
-				InstancesOverrides[LocalPlayer] = {
-					__Children = LocalPlayer:GetChildren(),
-					Properties = { Name = "[" .. LocalPlayer.ClassName .. "] " .. LocalPlayer.Name },
-				}
-			end
-
-			LocalPlayer:Kick("\n[SAFEMODE] Saving in Progress..\nPlease do NOT leave")
-			wait_for_render()
-			task.delay(10, service.GuiService.ClearError, service.GuiService)
-		end)
-
-		service.RunService:Set3dRenderingEnabled(false)
-	end
-	if SaveAsAttributes and not (OPTIONS.IsModel or OPTIONS.Object) then
-		-- Could be remade to use save_extra with some modifications 
-		local DataModelProperties = Instance.new("Configuration")
-		DataModelProperties.Name = "DataModelProperties"
-		SaveAttributes(game, true, "__NotSaveable_", DataModelProperties)
-		DataModelProperties:SetAttribute(__BREAK, "")
-		DataModelProperties.Parent = game
-		table.insert(ToSaveList, DataModelProperties)
-	end
-	local anti_idle
-	if OPTIONS.AntiIdle then
-		task.spawn(function()
-			local Idled = GetLocalPlayer().Idled
-			if getconnections then
-				for _, c in getconnections(Idled) do
-					if not pcall(function()
-							c:Disable()
-						end) then
-						pcall(function()
-							c:Disconnect()
-						end)
-					end
-				end
-			end
-			anti_idle = Idled:Connect(function()
-				service.VirtualInputManager:SendMouseWheelEvent(
-					service.UserInputService:GetMouseLocation().X,
-					service.UserInputService:GetMouseLocation().Y,
+				run_with_loading(
+					"Writing " .. get_size_format() .. " to File (Depends on Exec)",
+					nil,
 					true,
-					game
+					writefile,
+					placename,
+					totalstr
 				)
+			end
+		end
+		table.clear(SharedStrings)
+	end
+
+	local Connections
+	do
+		local Players = service.Players
+
+		if IgnoreList.Model ~= true then
+			Connections = {}
+			local function ignoreCharacter(player)
+				table.insert(
+					Connections,
+					player.CharacterAdded:Connect(function(character)
+						IgnoreList[character] = true
+					end)
+				)
+
+				local Character = player.Character
+				if Character then
+					IgnoreList[Character] = true
+				end
+			end
+
+			if OPTIONS.RemovePlayerCharacters then
+				table.insert(
+					Connections,
+					Players.PlayerAdded:Connect(function(player)
+						ignoreCharacter(player)
+					end)
+				)
+				for _, player in Players:GetPlayers() do
+					ignoreCharacter(player)
+				end
+			else
+				IgnoreNotArchivable = false -- TODO Bad solution (Characters are NotArchivable); Also make sure the next solution is compatible with IsolateLocalPlayerCharacter
+				if IsolateLocalPlayerCharacter then
+					task.spawn(function()
+						ignoreCharacter(GetLocalPlayer())
+					end)
+				end
+			end
+		end
+		if IsolateLocalPlayer and IgnoreList.Player ~= true then
+			task.spawn(function()
+				IgnoreList[GetLocalPlayer()] = true
 			end)
-		end)
-	end
-
-	elapse_t = os.clock()
-
-	local ok, err = xpcall(save_game, function(err)
-		return debug.traceback(err)
-	end)
-
-	if SafeMode then
-		service.GuiService:ClearError()
-		service.RunService:Set3dRenderingEnabled(true)
-	end
-
-	if old_gethiddenproperty then
-		gethiddenproperty = old_gethiddenproperty
-	end
-
-	if anti_idle then
-		anti_idle:Disconnect()
-	end
-	if Connections then
-		for _, connection in Connections do
-			connection:Disconnect()
 		end
 	end
-	GLOBAL_ENV[placename] = nil
-	if StatusText then
-		task.spawn(function()
-			elapse_t = os.clock() - elapse_t
-			local Log10 = math.log10(elapse_t)
-			local ExtraTime = 10
-			if ok then
-				StatusText.Text = string.format("Saved! Time %.3f seconds; Size %s", elapse_t, get_size_format())
-				StatusText.TextColor3 = Color3.new(0, 1)
-				task.wait(Log10 * 2 + ExtraTime)
-			else
-				if Loading then
-					task.cancel(Loading)
-					Loading = nil
-				end
-				StatusText.Text = "Failed! Check F9 console for more info"
-				StatusText.TextColor3 = Color3.new(1)
-				warn("Error found while saving:")
-				warn(err)
-				task.wait(Log10 + ExtraTime)
-			end
-			StatusText:Destroy()
-		end)
+
+	if IsolateStarterPlayer then
+		IgnoreList.StarterPlayer = false
 	end
 
-	if OPTIONS.ShutdownWhenDone and ok then
-		game:Shutdown()
+	if IsolatePlayers then
+		IgnoreList.Players = false
 	end
-end
+
+	if OPTIONS.ShowStatus then
+		do
+			local Exists = GLOBAL_ENV._statustext
+			if Exists then
+				Exists:Destroy()
+			end
+		end
+
+		local StatusGui = Instance.new("ScreenGui")
+
+		GLOBAL_ENV._statustext = StatusGui
+
+		StatusGui.DisplayOrder = 2e9
+		pcall(function() -- ? Compatibility with level 2
+			StatusGui.OnTopOfCoreBlur = true
+		end)
+
+		StatusText = Instance.new("TextLabel")
+
+		StatusText.Text = "Saving..."
+
+		StatusText.BackgroundTransparency = 1
+		StatusText.Font = Enum.Font.Arcade
+		StatusText.AnchorPoint = Vector2.new(1)
+		StatusText.Position = UDim2.new(1)
+		StatusText.Size = UDim2.new(0.3, 0, 0, 20)
+
+		StatusText.TextColor3 = Color3.new(1, 1, 1)
+		StatusText.TextScaled = true
+		StatusText.TextStrokeTransparency = 0.7
+		StatusText.TextXAlignment = Enum.TextXAlignment.Right
+		StatusText.TextYAlignment = Enum.TextYAlignment.Top
+
+		StatusText.Parent = StatusGui
+
+		local function randomString()
+			local length = math.random(10, 20)
+			local randomarray = table.create(length)
+			for i = 1, length do
+				randomarray[i] = string.char(math.random(32, 126))
+			end
+			return table.concat(randomarray)
+		end
+
+		if global_container.gethui then
+			StatusGui.Name = randomString()
+			StatusGui.Parent = global_container.gethui()
+		else
+			if global_container.protectgui then
+				StatusGui.Name = randomString()
+				global_container.protectgui(StatusGui)
+				StatusGui.Parent = service.CoreGui
+			else
+				local RobloxGui = service.CoreGui:FindFirstChild("RobloxGui")
+				if RobloxGui then
+					StatusGui.Parent = RobloxGui
+				else
+					StatusGui.Name = randomString()
+					StatusGui.Parent = service.CoreGui
+				end
+			end
+		end
+	end
+
+	do
+		local SafeMode = OPTIONS.SafeMode
+		if SafeMode then
+			task.spawn(function()
+				local LocalPlayer = GetLocalPlayer()
+
+				local PlayerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+				if PlayerScripts then
+					local function construct_InstanceOverride(instance)
+						local children = instance:GetChildren()
+						InstancesOverrides[instance] = {
+							__Children = children,
+						}
+						for _, child in children do
+							construct_InstanceOverride(child)
+						end
+					end
+					construct_InstanceOverride(PlayerScripts)
+
+					InstancesOverrides[LocalPlayer] = {
+						__Children = LocalPlayer:GetChildren(),
+						Properties = { Name = "[" .. LocalPlayer.ClassName .. "] " .. LocalPlayer.Name },
+					}
+				end
+
+				LocalPlayer:Kick("\n[SAFEMODE] Saving in Progress..\nPlease do NOT leave")
+				wait_for_render()
+				task.delay(10, service.GuiService.ClearError, service.GuiService)
+			end)
+
+			service.RunService:Set3dRenderingEnabled(false)
+		end
+		if SaveAsAttributes and not (OPTIONS.IsModel or OPTIONS.Object) then
+			-- Could be remade to use save_extra with some modifications 
+			local DataModelProperties = Instance.new("Configuration")
+			DataModelProperties.Name = "DataModelProperties"
+			SaveAttributes(game, true, "__NotSaveable_", DataModelProperties)
+			DataModelProperties:SetAttribute(__BREAK, "")
+			DataModelProperties.Parent = game
+			table.insert(ToSaveList, DataModelProperties)
+		end
+		local anti_idle
+		if OPTIONS.AntiIdle then
+			task.spawn(function()
+				local Idled = GetLocalPlayer().Idled
+				if getconnections then
+					for _, c in getconnections(Idled) do
+						if not pcall(function()
+								c:Disable()
+							end) then
+							pcall(function()
+								c:Disconnect()
+							end)
+						end
+					end
+				end
+				anti_idle = Idled:Connect(function()
+					service.VirtualInputManager:SendMouseWheelEvent(
+						service.UserInputService:GetMouseLocation().X,
+						service.UserInputService:GetMouseLocation().Y,
+						true,
+						game
+					)
+				end)
+			end)
+		end
+
+		elapse_t = os.clock()
+
+		local ok, err = xpcall(save_game, function(err)
+			return debug.traceback(err)
+		end)
+
+		if SafeMode then
+			service.GuiService:ClearError()
+			service.RunService:Set3dRenderingEnabled(true)
+		end
+
+		if old_gethiddenproperty then
+			gethiddenproperty = old_gethiddenproperty
+		end
+
+		if anti_idle then
+			anti_idle:Disconnect()
+		end
+		if Connections then
+			for _, connection in Connections do
+				connection:Disconnect()
+			end
+		end
+		GLOBAL_ENV[placename] = nil
+		if StatusText then
+			task.spawn(function()
+				elapse_t = os.clock() - elapse_t
+				local Log10 = math.log10(elapse_t)
+				local ExtraTime = 10
+				if ok then
+					StatusText.Text = string.format("Saved! Time %.3f seconds; Size %s", elapse_t, get_size_format())
+					StatusText.TextColor3 = Color3.new(0, 1)
+					task.wait(Log10 * 2 + ExtraTime)
+				else
+					if Loading then
+						task.cancel(Loading)
+						Loading = nil
+					end
+					StatusText.Text = "Failed! Check F9 console for more info"
+					StatusText.TextColor3 = Color3.new(1)
+					warn("Error found while saving:")
+					warn(err)
+					task.wait(Log10 + ExtraTime)
+				end
+				StatusText:Destroy()
+			end)
+		end
+
+		if OPTIONS.ShutdownWhenDone and ok then
+			game:Shutdown()
+		end
+	end
 end
 
 return synsaveinstance
