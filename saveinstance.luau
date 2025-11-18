@@ -53,7 +53,7 @@ do
 	local ExploitHttpGetWorks, _ = pcall(function()
 		return game:HttpGet("https://raw.githubusercontent.com/horizzondev/TopazSaveinstance/refs/heads/main/Dependencies/HttpGetTest", true)
 	end)
-	 
+
 	if ExploitHttpGetWorks then
 		HttpGet = function(URL, Async)
 			return game:HttpGet(URL, Async)
@@ -123,7 +123,7 @@ do -- * Load Region of Déjà Vu
 			end
 		end
 	end
-	
+
 	local function benchmark(f1, f2, ...)
 		local ranking = table.create(2)
 		for i, f in { f1, f2 } do
@@ -846,7 +846,7 @@ XML_Descriptors = {
 			.. "</R21><R22>"
 			.. R22
 			.. "</R22>",
-			"CoordinateFrame"
+		"CoordinateFrame"
 	end,
 	Color3 = function(raw) -- Each element is a <float>
 		return "<R>" .. raw.R .. "</R><G>" .. raw.G .. "</G><B>" .. raw.B .. "</B>" -- ? It is recommended that Color3 is encoded with elements instead of text.
@@ -900,24 +900,24 @@ XML_Descriptors = {
 		return "<faces>" .. __COUNT_BITS(raw.Right, raw.Top, raw.Back, raw.Left, raw.Bottom, raw.Front) .. "</faces>"
 	end,
 	Font = 636 < CLIENT_VERSION
-			and function(raw)
-				-- TODO (OPTIONAL ELEMENT): Figure out how to determine (ContentId) <CachedFaceId><url>rbxasset://fonts/GothamSSm-Medium.otf</url></CachedFaceId>
+		and function(raw)
+			-- TODO (OPTIONAL ELEMENT): Figure out how to determine (ContentId) <CachedFaceId><url>rbxasset://fonts/GothamSSm-Medium.otf</url></CachedFaceId>
 				--[[
 		? game:GetService("TextService"):GetFontMemoryData()
 		? rbxasset://fonts/families/{Enum.Font.BuilderSans.Name}.json
 		]]
 
-				local ok_w, weight = pcall(index, raw, "Weight")
-				local ok_s, style = pcall(index, raw, "Style")
+			local ok_w, weight = pcall(index, raw, "Weight")
+			local ok_s, style = pcall(index, raw, "Style")
 
-				return "<Family>"
-					.. XML_Descriptors.ContentId(raw.Family)
-					.. "</Family><Weight>"
-					.. (ok_w and XML_Descriptors.__ENUM(weight) or "")
-					.. "</Weight><Style>"
-					.. (ok_s and style.Name or "") -- Weird but this field accepts .Name of enum instead..
-					.. "</Style>"
-			end
+			return "<Family>"
+			.. XML_Descriptors.ContentId(raw.Family)
+			.. "</Family><Weight>"
+			.. (ok_w and XML_Descriptors.__ENUM(weight) or "")
+			.. "</Weight><Style>"
+			.. (ok_s and style.Name or "") -- Weird but this field accepts .Name of enum instead..
+			.. "</Style>"
+		end
 		or function(raw)
 			local FontString = tostring(raw) -- TODO: Temporary fix
 
@@ -925,12 +925,12 @@ XML_Descriptors = {
 			local EmptyStyle = string_find(FontString, "Style =  }")
 
 			return "<Family>"
-				.. XML_Descriptors.ContentId(raw.Family)
-				.. "</Family><Weight>"
-				.. (EmptyWeight and "" or XML_Descriptors.__ENUM(raw.Weight))
-				.. "</Weight><Style>"
-				.. (EmptyStyle and "" or raw.Style.Name) -- Weird but this field accepts .Name of enum instead..
-				.. "</Style>"
+			.. XML_Descriptors.ContentId(raw.Family)
+			.. "</Family><Weight>"
+			.. (EmptyWeight and "" or XML_Descriptors.__ENUM(raw.Weight))
+			.. "</Weight><Style>"
+			.. (EmptyStyle and "" or raw.Style.Name) -- Weird but this field accepts .Name of enum instead..
+			.. "</Style>"
 		end,
 	NetAssetRef = nil,
 	NumberRange = function(raw) -- tostring(raw) also works
@@ -980,7 +980,7 @@ XML_Descriptors = {
 		local CustomPhysics = "<CustomPhysics>" .. XML_Descriptors.bool(raw and true or false) .. "</CustomPhysics>"
 
 		return raw
-				and CustomPhysics .. "<Density>" .. raw.Density .. "</Density><Friction>" .. raw.Friction .. "</Friction><Elasticity>" .. raw.Elasticity .. "</Elasticity><FrictionWeight>" .. raw.FrictionWeight .. "</FrictionWeight><ElasticityWeight>" .. raw.ElasticityWeight .. "</ElasticityWeight><AcousticAbsorption>" .. raw.AcousticAbsorption .. "</AcousticAbsorption>"
+			and CustomPhysics .. "<Density>" .. raw.Density .. "</Density><Friction>" .. raw.Friction .. "</Friction><Elasticity>" .. raw.Elasticity .. "</Elasticity><FrictionWeight>" .. raw.FrictionWeight .. "</FrictionWeight><ElasticityWeight>" .. raw.ElasticityWeight .. "</ElasticityWeight><AcousticAbsorption>" .. raw.AcousticAbsorption .. "</AcousticAbsorption>"
 			or CustomPhysics
 	end,
 	-- ProtectedString = function(raw) return tostring(raw), "ProtectedString" end,
@@ -1247,14 +1247,14 @@ do
 
 	local function TransformsSerialize(Transforms)
 		local b = buffer.create(#Transforms * 48 + 8) -- 48 bytes per transform, 8 byte header
-		
+
 		local offset = 0
 
 		buffer.writeu32(b, offset, 1) -- ? [CONSTANT] Version byte (likely)
 		offset += 4
 		buffer.writeu32(b, offset, #Transforms) -- Transform count
 		offset += 4
-		
+
 		for _, transform in Transforms do
 			local X, Y, Z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = transform:GetComponents()
 			buffer.writef32(b, offset, R00)
@@ -1282,7 +1282,7 @@ do
 			buffer.writef32(b, offset, Z)
 			offset += 4
 		end
-		
+
 		return buffer.tostring(b)
 	end
 
@@ -1406,11 +1406,11 @@ do
 		AudioDeviceInput = {
 			AccessList = function(instance) -- CanSave = false, CanLoad = false
 				local UserIdAccessList = instance:GetUserIdAccessList()
-	
+
 				if #UserIdAccessList == 0 then
 					return ""
 				end
-    
+
 				local b = {}
 				local offset = 1
 				for _, UserId in UserIdAccessList do
@@ -1423,33 +1423,33 @@ do
 		AnimationNodeDefinition = {
 			InputPinData = function(instance)
 				local InputPins = instance:GetInputPins()
-				
+
 				if #InputPins == 0 then
 					return "\1\0\0\0\0\0\0\0"
 				end
-				
+
 				local buffer_size = 8 -- Initial size
-				
+
 				for _, pin in InputPins do
 					buffer_size += 4 + #pin
 				end
-				
+
 				local b = buffer.create(buffer_size)
 
 				local offset = 0
-				
+
 				buffer.writeu32(b, offset, 1) -- ? [CONSTANT] Version byte (likely)
 				offset += 4
 				buffer.writeu32(b, offset, #InputPins) -- Input Pin count
 				offset += 4
-				
+
 				for _, pin in InputPins do
 					buffer.writeu32(b, offset, #pin)
 					offset += 4
 					buffer.writestring(b, offset, pin)
 					offset += #pin
 				end
-				
+
 				return buffer.tostring(b)
 			end,
 		},
@@ -1482,17 +1482,17 @@ do
 
 			name = function(instance)
 				local Names = instance:GetNames() -- Requires capability RobloxScript
-				
+
 				if #Names == 0 then
 					return "\1\0\0\0\0\0\0\0"
 				end
-				
+
 				local buffer_size = 8 -- Initial size
-				
+
 				for _, name in Names do
 					buffer_size += 4 + #name
 				end
-				
+
 				local b = buffer.create(buffer_size)
 
 				local offset = 0
@@ -1501,7 +1501,7 @@ do
 				offset += 4
 				buffer.writeu32(b, offset, #Names) -- Name count
 				offset += 4
-				
+
 				for _, name in Names do
 					buffer.writeu32(b, offset, #name)
 					offset += 4
@@ -1510,63 +1510,63 @@ do
 					buffer.writestring(b, offset, name)
 					offset += #name
 				end
-				
+
 				return buffer.tostring(b)
 			end,
 
 			parent = function(instance)
 				local Parents = instance:GetParents() -- Requires capability RobloxScript
-				
+
 				if #Parents == 0 then
 					return "\1\0\0\0\0\0\0\0"
 				end
-				
+
 				local buffer_size = #Parents * 2 + 8 -- 2 bytes per parent, 8 byte header
-				
+
 				local b = buffer.create(buffer_size)
 
 				local offset = 0
-				
+
 				buffer.writeu32(b, offset, 1) -- ? [CONSTANT] Version byte (likely)
 				offset += 4
 				buffer.writeu32(b, offset, #Parents) -- Parent count
 				offset += 4
-				
+
 				for _, parent in Parents do
 					buffer.writeu16(b, offset, parent)
 					offset += 2
 				end
-				
+
 				return buffer.tostring(b)
 			end,
 
 			postTransform = function(instance)
 				local PostTransforms = instance:GetPostTransforms() -- Requires capability RobloxScript
-				
+
 				if #PostTransforms == 0 then
 					return "\1\0\0\0\0\0\0\0"
 				end
-				
+
 				return TransformsSerialize(PostTransforms)
 			end,
-			
+
 			preTransform = function(instance)
 				local PreTransforms = instance:GetPreTransforms() -- Requires capability RobloxScript
-				
+
 				if #PreTransforms == 0 then
 					return "\1\0\0\0\0\0\0\0"
 				end
-				
+
 				return TransformsSerialize(PreTransforms)
 			end,
-			
+
 			transform = function(instance)
 				local Transforms = instance:GetTransforms() -- Requires capability RobloxScript
-				
+
 				if #Transforms == 0 then
 					return "\1\0\0\0\0\0\0\0"
 				end
-				
+
 				return TransformsSerialize(Transforms)
 			end,
 		},
@@ -2428,13 +2428,13 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			CustomOptions = {}
 		end
 	end
-	
+
 	if not writefile and not OPTIONS.Callback then
 		warn('Function "writefile" not available. Use the option "Callback" for use without writefile.')
 		GLOBAL_ENV.USSI = nil
 		return
 	end
-	
+
 	local gethiddenproperty_fallback
 	if not OPTIONS.DisableGethiddenpropertyFallback then
 		local UGCValidationService -- = service.UGCValidationService
@@ -2447,7 +2447,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			-- TODO `category ~= "Class"` causes WeldConstraint Part1Internal to be read as nil and not get unfiltered. Currently, there are no properties of category "Class" that match the following: NotScriptable, can be read with gethiddenproperty_fallback accurately (it always outputs nil for "Class" category, making that check useless anyway) & don't have a NotScriptableFix.
 		end
 	end
-	
+
 	if OPTIONS.IgnoreDefaultPlayerScripts then
 		-- TODO This is a bad workaround, find a better automatic way. (LuaSourceContainer.isPlayerScript doesn't work, as it is always false)
 		local DecompileIgnore = OPTIONS.DecompileIgnore
@@ -2487,14 +2487,14 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 
 	local DecompileIgnore, IgnoreList, IgnoreProperties, NotCreatableFixes =
 		ArrayToDict(OPTIONS.DecompileIgnore, true),
-		ArrayToDict(OPTIONS.IgnoreList, true),
-		ArrayToDict(OPTIONS.IgnoreProperties),
-		ArrayToDict(OPTIONS.NotCreatableFixes, true, "Folder")
-		
+	ArrayToDict(OPTIONS.IgnoreList, true),
+	ArrayToDict(OPTIONS.IgnoreProperties),
+	ArrayToDict(OPTIONS.NotCreatableFixes, true, "Folder")
+
 	local Crashlog = OPTIONS.Crashlog
 	local __DEBUG_MODE = OPTIONS.__DEBUG_MODE
 	local old_warn
-	
+
 	if Crashlog and not old_warn then
 		if writefile and appendfile then
 			__DEBUG_MODE = true
@@ -2536,7 +2536,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		old_gethiddenproperty = gethiddenproperty
 		gethiddenproperty = nil
 	end
-	
+
 	local SaveAsAttributes = OPTIONS.SaveAsAttributes
 	local SaveNotCreatable = OPTIONS.SaveNotCreatable
 	local SavePropsAsAttributesForNotCreatableFixes = OPTIONS.SavePropsAsAttributesForNotCreatableFixes
@@ -2555,7 +2555,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 	local Anonymous
 	if OPTIONS.Anonymous then
 		Anonymous = type(OPTIONS.Anonymous) == "table" and OPTIONS.Anonymous
-						or { UserId = "1", Name = "Roblox" }
+			or { UserId = "1", Name = "Roblox" }
 	end
 	local IgnoreSharedStrings = OPTIONS.IgnoreSharedStrings
 	local SharedStringOverwrite = OPTIONS.SharedStringOverwrite
@@ -2627,7 +2627,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			FileType = ".rbxmx"
 			placename = (
 				FilePath
-				or sanitizeFileName("model " .. PlaceName .. " " .. (ToSaveInstance or tmp[1] or game):GetFullName())
+					or sanitizeFileName("model " .. PlaceName .. " " .. (ToSaveInstance or tmp[1] or game):GetFullName())
 			)
 		else
 			FileType = ".rbxlx"
@@ -2873,374 +2873,374 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		--// and be more optimized cuz decomped code is slow asf
 	end
 
-local function rescriptcode(code)
-	if not code or type(code) ~= "string" or #code < 10 then
-		return code
-	end
-	
-	local success, result = pcall(function()
-		local varMapping = {}
-		local usedNames = {}
-		local functionParams = {}
-		
-		local knownServices = {
-			Workspace = true, Players = true, Lighting = true, ReplicatedStorage = true,
-			ReplicatedFirst = true, ServerStorage = true, ServerScriptService = true,
-			StarterGui = true, StarterPack = true, StarterPlayer = true, Teams = true,
-			SoundService = true, Chat = true, TextChatService = true, RunService = true,
-			TweenService = true, UserInputService = true, HttpService = true, Debris = true
-		}
-		
-		local function getUniqueName(base)
-			if not usedNames[base] then
-				usedNames[base] = true
-				return base
-			end
-			local counter = 2
-			while usedNames[base .. counter] do
-				counter = counter + 1
-			end
-			usedNames[base .. counter] = true
-			return base .. counter
+	local function rescriptcode(code)
+		if not code or type(code) ~= "string" or #code < 10 then
+			return code
 		end
-		
-		for varName, serviceName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*game:GetService%s*%(%s*[\"']([%w_]+)[\"']%s*%)") do
-			if knownServices[serviceName] then
-				varMapping[varName] = getUniqueName(serviceName)
+
+		local success, result = pcall(function()
+			local varMapping = {}
+			local usedNames = {}
+			local functionParams = {}
+
+			local knownServices = {
+				Workspace = true, Players = true, Lighting = true, ReplicatedStorage = true,
+				ReplicatedFirst = true, ServerStorage = true, ServerScriptService = true,
+				StarterGui = true, StarterPack = true, StarterPlayer = true, Teams = true,
+				SoundService = true, Chat = true, TextChatService = true, RunService = true,
+				TweenService = true, UserInputService = true, HttpService = true, Debris = true
+			}
+
+			local function getUniqueName(base)
+				if not usedNames[base] then
+					usedNames[base] = true
+					return base
+				end
+				local counter = 2
+				while usedNames[base .. counter] do
+					counter = counter + 1
+				end
+				usedNames[base .. counter] = true
+				return base .. counter
 			end
-		end
-		
-		for varName, serviceName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*game%.([%w_]+)") do
-			if knownServices[serviceName] then
-				varMapping[varName] = getUniqueName(serviceName)
-			end
-		end
-		
-		for varName, modulePath in string.gmatch(code, "local%s+([%w_]+)%s*=%s*require%s*%(") do
-			local fullRequire = string.match(code, "local%s+" .. varName .. "%s*=%s*require%s*%([^%)]+%.([%w_]+)%s*%)")
-			if fullRequire then
-				varMapping[varName] = getUniqueName(fullRequire)
-			end
-		end
-		
-		local firstLine = string.match(code, "^[^\n]+")
-		if firstLine then
-			local moduleVar = string.match(firstLine, "^%s*local%s+([%w_]+)%s*=%s*{")
-			if moduleVar then
-				local returnLine = string.match(code, "return%s+" .. moduleVar .. "%s*;?%s*$")
-				if returnLine then
-					varMapping[moduleVar] = "module"
+
+			for varName, serviceName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*game:GetService%s*%(%s*[\"']([%w_]+)[\"']%s*%)") do
+				if knownServices[serviceName] then
+					varMapping[varName] = getUniqueName(serviceName)
 				end
 			end
-		end
-		
-		for funcDef in string.gmatch(code, "function%s*%b()") do
-			local params = string.match(funcDef, "%((.-)%)")
-			if params then
-				local paramList = {}
-				for param in string.gmatch(params, "([%w_]+)") do
-					table.insert(paramList, param)
+
+			for varName, serviceName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*game%.([%w_]+)") do
+				if knownServices[serviceName] then
+					varMapping[varName] = getUniqueName(serviceName)
 				end
-				
-				if #paramList > 0 then
-					local firstParam = paramList[1]
-					if string.match(firstParam, "^v%d+$") or string.match(firstParam, "^arg%d+$") then
-						functionParams[firstParam] = true
+			end
+
+			for varName, modulePath in string.gmatch(code, "local%s+([%w_]+)%s*=%s*require%s*%(") do
+				local fullRequire = string.match(code, "local%s+" .. varName .. "%s*=%s*require%s*%([^%)]+%.([%w_]+)%s*%)")
+				if fullRequire then
+					varMapping[varName] = getUniqueName(fullRequire)
+				end
+			end
+
+			local firstLine = string.match(code, "^[^\n]+")
+			if firstLine then
+				local moduleVar = string.match(firstLine, "^%s*local%s+([%w_]+)%s*=%s*{")
+				if moduleVar then
+					local returnLine = string.match(code, "return%s+" .. moduleVar .. "%s*;?%s*$")
+					if returnLine then
+						varMapping[moduleVar] = "module"
 					end
 				end
 			end
-		end
-		
-		for param in pairs(functionParams) do
-			varMapping[param] = "self"
-		end
-		
-		for varName, className in string.gmatch(code, "local%s+([%w_]+)%s*=%s*Instance%.new%s*%(%s*[\"']([%w_]+)[\"']%s*%)") do
-			local suggestion = string.lower(string.sub(className, 1, 1)) .. string.sub(className, 2)
-			varMapping[varName] = getUniqueName(suggestion)
-		end
-		
-		for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+%.Character") do
-			if string.match(varName, "^v%d+$") or string.match(varName, "^l_") then
-				varMapping[varName] = getUniqueName("character")
-			end
-		end
-		
-		for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:Clone%s*%(") do
-			if string.match(varName, "^v%d+$") or string.match(varName, "^l_") then
-				varMapping[varName] = getUniqueName("clone")
-			end
-		end
-		
-		for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*{") do
-			if string.match(varName, "^v%d+$") and not varMapping[varName] then
-				varMapping[varName] = getUniqueName("data")
-			end
-		end
-		
-		for i, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+pairs") do
-			if not varMapping[i] and string.match(i, "^[vk_]") then 
-				varMapping[i] = "key" 
-			end
-			if not varMapping[v] and string.match(v, "^v%d+$") then 
-				varMapping[v] = "value" 
-			end
-		end
-		
-		for i, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+ipairs") do
-			if not varMapping[i] and string.match(i, "^[vi_]") then 
-				varMapping[i] = "index" 
-			end
-			if not varMapping[v] and string.match(v, "^v%d+$") then 
-				varMapping[v] = "value" 
-			end
-		end
-		
-		for varName in string.gmatch(code, "for%s+([%w_]+)%s*=%s*") do
-			if not varMapping[varName] and (string.match(varName, "^v%d+$") or varName == "_") then
-				varMapping[varName] = "i"
-			end
-		end
-		
-		local sortedMappings = {}
-		for oldName, newName in pairs(varMapping) do
-			table.insert(sortedMappings, {old = oldName, new = newName, len = #oldName})
-		end
-		table.sort(sortedMappings, function(a, b)
-			return a.len > b.len
-		end)
-		
-		for _, mapping in ipairs(sortedMappings) do
-			local escapedOld = string.gsub(mapping.old, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-			code = string.gsub(code, "%f[%w_]" .. escapedOld .. "%f[^%w_]", mapping.new)
-		end
-		
-		code = string.gsub(code, 'game%["Run Service"%]', "game:GetService('RunService')")
-		code = string.gsub(code, 'game%.Debris', "game:GetService('Debris')")
-		
-		local lines = {}
-		local indentLevel = 0
-		local indentChar = "\t"
-		
-		for line in string.gmatch(code .. "\n", "([^\n]*)\n") do
-			local trimmed = string.gsub(line, "^%s+", "")
-			trimmed = string.gsub(trimmed, "%s+$", "")
-			
-			if trimmed == "" then
-				table.insert(lines, "")
-			else
-				local shouldUnindent = string.match(trimmed, "^end[;,%)%s]") or 
-					string.match(trimmed, "^end$") or
-					string.match(trimmed, "^else") or 
-					string.match(trimmed, "^elseif") or
-					string.match(trimmed, "^until")
-				
-				if shouldUnindent and indentLevel > 0 then
-					indentLevel = indentLevel - 1
-				end
-				
-				table.insert(lines, string.rep(indentChar, indentLevel) .. trimmed)
-				
-				local shouldIndent = string.match(trimmed, "then%s*$") or
-					string.match(trimmed, "do%s*$") or
-					string.match(trimmed, "repeat%s*$") or
-					(string.match(trimmed, "^function") and not string.match(trimmed, "end%s*$")) or
-					(string.match(trimmed, "=%s*function") and not string.match(trimmed, "end%s*$"))
-				
-				if shouldIndent then
-					indentLevel = indentLevel + 1
-				end
-				
-				if string.match(trimmed, "^else") or string.match(trimmed, "^elseif") then
-					indentLevel = indentLevel + 1
-				end
-			end
-		end
-		
-		code = table.concat(lines, "\n")
-		
-		code = string.gsub(code, "\n\n\n+", "\n\n")
-		code = string.gsub(code, "[ \t]+\n", "\n")
-		code = string.gsub(code, "[ \t]+$", "")
-		code = string.gsub(code, ";%s*\n", "\n")
-		
-		return code
-	end)
-	
-	if not success then
-		return code
-	end
-	
-	return result
-end
 
-local function johnpork(code)
-	if not code or type(code) ~= "string" or #code < 10 then
-		return code
-	end
-	
-	local success, result = pcall(function()
-		local varMapping = {}
-		for genericName, actualName in string.gmatch(code, "local%s+function%s+(v%d+)%s*%b()%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
-			varMapping[genericName] = actualName
-		end
-		for genericName, actualName in string.gmatch(code, "local%s+function%s+(v%d+)%s*%b()%s*%-%-%[%[%s*Line:%s*%d+%s*%]%]%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
-			varMapping[genericName] = actualName
-		end
-		for genericName, actualName in string.gmatch(code, "local%s+(v%d+)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
-			varMapping[genericName] = actualName
-		end
-		for genericName, actualName in string.gmatch(code, "local%s+(v%d+)%s*=%s*[^\n]+%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
-			varMapping[genericName] = actualName
-		end
-		for genericNames, actualNames in string.gmatch(code, "local%s+([v%d,%s]+)%s*%-%-%[%[%s*Names:%s*([%w_,%s]+)%s*%]%]") do
-			local genList = {}
-			local actList = {}
-			
-			for name in string.gmatch(genericNames, "v%d+") do
-				table.insert(genList, name)
+			for funcDef in string.gmatch(code, "function%s*%b()") do
+				local params = string.match(funcDef, "%((.-)%)")
+				if params then
+					local paramList = {}
+					for param in string.gmatch(params, "([%w_]+)") do
+						table.insert(paramList, param)
+					end
+
+					if #paramList > 0 then
+						local firstParam = paramList[1]
+						if string.match(firstParam, "^v%d+$") or string.match(firstParam, "^arg%d+$") then
+							functionParams[firstParam] = true
+						end
+					end
+				end
 			end
-			
-			for name in string.gmatch(actualNames, "[%w_]+") do
-				table.insert(actList, name)
+
+			for param in pairs(functionParams) do
+				varMapping[param] = "self"
 			end
-			
-			for i = 1, math.min(#genList, #actList) do
-				varMapping[genList[i]] = actList[i]
+
+			for varName, className in string.gmatch(code, "local%s+([%w_]+)%s*=%s*Instance%.new%s*%(%s*[\"']([%w_]+)[\"']%s*%)") do
+				local suggestion = string.lower(string.sub(className, 1, 1)) .. string.sub(className, 2)
+				varMapping[varName] = getUniqueName(suggestion)
 			end
-		end
-		for genericNames, actualNames in string.gmatch(code, "local%s+([v%d,%s]+)%s*=%s*[^\n]+%s*%-%-%[%[%s*Names:%s*([%w_,%s]+)%s*%]%]") do
-			local genList = {}
-			local actList = {}
-			
-			for name in string.gmatch(genericNames, "v%d+") do
-				table.insert(genList, name)
+
+			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+%.Character") do
+				if string.match(varName, "^v%d+$") or string.match(varName, "^l_") then
+					varMapping[varName] = getUniqueName("character")
+				end
 			end
-			
-			for name in string.gmatch(actualNames, "[%w_]+") do
-				table.insert(actList, name)
+
+			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:Clone%s*%(") do
+				if string.match(varName, "^v%d+$") or string.match(varName, "^l_") then
+					varMapping[varName] = getUniqueName("clone")
+				end
 			end
-			
-			for i = 1, math.min(#genList, #actList) do
-				varMapping[genList[i]] = actList[i]
+
+			for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*{") do
+				if string.match(varName, "^v%d+$") and not varMapping[varName] then
+					varMapping[varName] = getUniqueName("data")
+				end
 			end
+
+			for i, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+pairs") do
+				if not varMapping[i] and string.match(i, "^[vk_]") then 
+					varMapping[i] = "key" 
+				end
+				if not varMapping[v] and string.match(v, "^v%d+$") then 
+					varMapping[v] = "value" 
+				end
+			end
+
+			for i, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+ipairs") do
+				if not varMapping[i] and string.match(i, "^[vi_]") then 
+					varMapping[i] = "index" 
+				end
+				if not varMapping[v] and string.match(v, "^v%d+$") then 
+					varMapping[v] = "value" 
+				end
+			end
+
+			for varName in string.gmatch(code, "for%s+([%w_]+)%s*=%s*") do
+				if not varMapping[varName] and (string.match(varName, "^v%d+$") or varName == "_") then
+					varMapping[varName] = "i"
+				end
+			end
+
+			local sortedMappings = {}
+			for oldName, newName in pairs(varMapping) do
+				table.insert(sortedMappings, {old = oldName, new = newName, len = #oldName})
+			end
+			table.sort(sortedMappings, function(a, b)
+				return a.len > b.len
+			end)
+
+			for _, mapping in ipairs(sortedMappings) do
+				local escapedOld = string.gsub(mapping.old, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+				code = string.gsub(code, "%f[%w_]" .. escapedOld .. "%f[^%w_]", mapping.new)
+			end
+
+			code = string.gsub(code, 'game%["Run Service"%]', "game:GetService('RunService')")
+			code = string.gsub(code, 'game%.Debris', "game:GetService('Debris')")
+
+			local lines = {}
+			local indentLevel = 0
+			local indentChar = "\t"
+
+			for line in string.gmatch(code .. "\n", "([^\n]*)\n") do
+				local trimmed = string.gsub(line, "^%s+", "")
+				trimmed = string.gsub(trimmed, "%s+$", "")
+
+				if trimmed == "" then
+					table.insert(lines, "")
+				else
+					local shouldUnindent = string.match(trimmed, "^end[;,%)%s]") or 
+						string.match(trimmed, "^end$") or
+						string.match(trimmed, "^else") or 
+						string.match(trimmed, "^elseif") or
+						string.match(trimmed, "^until")
+
+					if shouldUnindent and indentLevel > 0 then
+						indentLevel = indentLevel - 1
+					end
+
+					table.insert(lines, string.rep(indentChar, indentLevel) .. trimmed)
+
+					local shouldIndent = string.match(trimmed, "then%s*$") or
+						string.match(trimmed, "do%s*$") or
+						string.match(trimmed, "repeat%s*$") or
+						(string.match(trimmed, "^function") and not string.match(trimmed, "end%s*$")) or
+						(string.match(trimmed, "=%s*function") and not string.match(trimmed, "end%s*$"))
+
+					if shouldIndent then
+						indentLevel = indentLevel + 1
+					end
+
+					if string.match(trimmed, "^else") or string.match(trimmed, "^elseif") then
+						indentLevel = indentLevel + 1
+					end
+				end
+			end
+
+			code = table.concat(lines, "\n")
+
+			code = string.gsub(code, "\n\n\n+", "\n\n")
+			code = string.gsub(code, "[ \t]+\n", "\n")
+			code = string.gsub(code, "[ \t]+$", "")
+			code = string.gsub(code, ";%s*\n", "\n")
+
+			return code
+		end)
+
+		if not success then
+			return code
 		end
 
-		for genericName, actualName in string.gmatch(code, "for%s+(v%d+)%s*=%s*[^\n]+do%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
-			varMapping[genericName] = actualName
-		end
-		for genericNames, actualNames in string.gmatch(code, "for%s+([v%d,%s]+)%s*in%s*[^\n]+do%s*%-%-%[%[%s*Names:%s*([%w_,%s]+)%s*%]%]") do
-			local genList = {}
-			local actList = {}
-			
-			for name in string.gmatch(genericNames, "v%d+") do
-				table.insert(genList, name)
-			end
-			
-			for name in string.gmatch(actualNames, "[%w_]+") do
-				table.insert(actList, name)
-			end
-			
-			for i = 1, math.min(#genList, #actList) do
-				varMapping[genList[i]] = actList[i]
-			end
-		end
-		for genericParams, actualParams in string.gmatch(code, "(%b())%s*%-%-%[%[%s*Params:%s*([%w_,%s]+)%s*%]%]") do
-			local cleanGeneric = string.gsub(genericParams, "[()]", "")
-			local genList = {}
-			local actList = {}
-			
-			for name in string.gmatch(cleanGeneric, "v%d+") do
-				table.insert(genList, name)
-			end
-			
-			for name in string.gmatch(actualParams, "[%w_]+") do
-				table.insert(actList, name)
-			end
-			
-			for i = 1, math.min(#genList, #actList) do
-				varMapping[genList[i]] = actList[i]
-			end
-		end
-		code = string.gsub(code, "%f[%w_]f_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]a_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]t_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]l_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]v_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
-		code = string.gsub(code, "([%w_]+)_u%f[^%w_]", "%1")
-		code = string.gsub(code, "([%w_]+)_l%f[^%w_]", "%1")
-		code = string.gsub(code, "([%w_]+)_t%f[^%w_]", "%1")
-		code = string.gsub(code, "([%w_]+)_v%f[^%w_]", "%1")
-		code = string.gsub(code, "([%w_]+)_f%f[^%w_]", "%1")
-		code = string.gsub(code, "([%w_]+)_a%f[^%w_]", "%1")
-		code = string.gsub(code, "%s*%-%-%[%[%s*Name:%s*[^%]]+%]%]", "")
-		code = string.gsub(code, "%s*%-%-%[%[%s*Names:%s*[^%]]+%]%]", "")
-		code = string.gsub(code, "%s*%-%-%[%[%s*Params:%s*[^%]]+%]%]", "")
-		code = string.gsub(code, "%s*%-%-%[%[%s*Line:%s*[^%]]+%]%]", "")
-		code = string.gsub(code, "%s*%-%- upvalues:[^\n]*\n?", "")
-		code = string.gsub(code, "%-%-%[%[.-%]%]", "") 
-		code = string.gsub(code, "([%)%}%]])%s+(local%s+)", "%1\n\t%2")
-		code = string.gsub(code, "(end)%s+(local%s+)", "%1\n\t%2")
-		code = string.gsub(code, "(else)%s+(local%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(then)%s+(local%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(do)%s+(local%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "([%)%}%]])%s+(if%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(end)%s+(if%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(else)%s+(if%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "([%)%}%]])%s+(for%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(end)%s+(for%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(do)%s+(for%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "([%)%}%]])%s+(while%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(end)%s+(while%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "([%)%}%]])%s+(return%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(else)%s+(return%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "(then)%s+(return%s+)", "%1\n\t\t%2")
-		code = string.gsub(code, "([%)%}%]])%s+(function%s+)", "%1\n\t%2")
-		code = string.gsub(code, "(end)%s+(function%s+)", "%1\n\t%2")
-		code = string.gsub(code, "([^%s])%s+(end)([^%w])", "%1\n\t%2%3")
-		local sortedVars = {}
-		for gen, act in pairs(varMapping) do
-			table.insert(sortedVars, {gen = gen, act = act})
-		end
-		
-		table.sort(sortedVars, function(a, b)
-			return #a.gen > #b.gen
-		end)
-		for _, pair in ipairs(sortedVars) do
-			local gen = pair.gen
-			local act = pair.act
-			local escapedGen = string.gsub(gen, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-			code = string.gsub(code, "%f[%w_]" .. escapedGen .. "%f[^%w_]", act)
-		end
-		code = string.gsub(code, "[ \t]+\n", "\n")
-		code = string.gsub(code, "[ \t]+$", "")
-		code = string.gsub(code, "\n\n\n+", "\n\n")
-		code = string.gsub(code, ",([^%s])", ", %1")
-		code = string.gsub(code, "([%w_])=([%w_])", "%1 = %2")
-		code = string.gsub(code, "([%w_])==([%w_])", "%1 == %2")
-		code = string.gsub(code, "([%w_])~=([%w_])", "%1 ~= %2")
-		code = string.gsub(code, "([%w_])<([%w_])", "%1 < %2")
-		code = string.gsub(code, "([%w_])>([%w_])", "%1 > %2")
-		code = string.gsub(code, "([%w_])<=([%w_])", "%1 <= %2")
-		code = string.gsub(code, "([%w_])>=([%w_])", "%1 >= %2")
-		local lines = {}
-		for line in string.gmatch(code, "[^\n]+") do
-			local indent = string.match(line, "^[\t ]+") or ""
-			local content = string.gsub(line, "^[\t ]+", "")
-			indent = string.gsub(indent, "    ", "\t")
-			table.insert(lines, indent .. content)
-		end
-		code = table.concat(lines, "\n")
-		return code
-	end)
-	
-	if not success then
-		warn("Error during decompilation: ", result)
-		return code
+		return result
 	end
-	
-	return rescriptcode(result)
-end
+
+	local function johnpork(code)
+		if not code or type(code) ~= "string" or #code < 10 then
+			return code
+		end
+
+		local success, result = pcall(function()
+			local varMapping = {}
+			for genericName, actualName in string.gmatch(code, "local%s+function%s+(v%d+)%s*%b()%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
+				varMapping[genericName] = actualName
+			end
+			for genericName, actualName in string.gmatch(code, "local%s+function%s+(v%d+)%s*%b()%s*%-%-%[%[%s*Line:%s*%d+%s*%]%]%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
+				varMapping[genericName] = actualName
+			end
+			for genericName, actualName in string.gmatch(code, "local%s+(v%d+)%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
+				varMapping[genericName] = actualName
+			end
+			for genericName, actualName in string.gmatch(code, "local%s+(v%d+)%s*=%s*[^\n]+%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
+				varMapping[genericName] = actualName
+			end
+			for genericNames, actualNames in string.gmatch(code, "local%s+([v%d,%s]+)%s*%-%-%[%[%s*Names:%s*([%w_,%s]+)%s*%]%]") do
+				local genList = {}
+				local actList = {}
+
+				for name in string.gmatch(genericNames, "v%d+") do
+					table.insert(genList, name)
+				end
+
+				for name in string.gmatch(actualNames, "[%w_]+") do
+					table.insert(actList, name)
+				end
+
+				for i = 1, math.min(#genList, #actList) do
+					varMapping[genList[i]] = actList[i]
+				end
+			end
+			for genericNames, actualNames in string.gmatch(code, "local%s+([v%d,%s]+)%s*=%s*[^\n]+%s*%-%-%[%[%s*Names:%s*([%w_,%s]+)%s*%]%]") do
+				local genList = {}
+				local actList = {}
+
+				for name in string.gmatch(genericNames, "v%d+") do
+					table.insert(genList, name)
+				end
+
+				for name in string.gmatch(actualNames, "[%w_]+") do
+					table.insert(actList, name)
+				end
+
+				for i = 1, math.min(#genList, #actList) do
+					varMapping[genList[i]] = actList[i]
+				end
+			end
+
+			for genericName, actualName in string.gmatch(code, "for%s+(v%d+)%s*=%s*[^\n]+do%s*%-%-%[%[%s*Name:%s*([%w_]+)%s*%]%]") do
+				varMapping[genericName] = actualName
+			end
+			for genericNames, actualNames in string.gmatch(code, "for%s+([v%d,%s]+)%s*in%s*[^\n]+do%s*%-%-%[%[%s*Names:%s*([%w_,%s]+)%s*%]%]") do
+				local genList = {}
+				local actList = {}
+
+				for name in string.gmatch(genericNames, "v%d+") do
+					table.insert(genList, name)
+				end
+
+				for name in string.gmatch(actualNames, "[%w_]+") do
+					table.insert(actList, name)
+				end
+
+				for i = 1, math.min(#genList, #actList) do
+					varMapping[genList[i]] = actList[i]
+				end
+			end
+			for genericParams, actualParams in string.gmatch(code, "(%b())%s*%-%-%[%[%s*Params:%s*([%w_,%s]+)%s*%]%]") do
+				local cleanGeneric = string.gsub(genericParams, "[()]", "")
+				local genList = {}
+				local actList = {}
+
+				for name in string.gmatch(cleanGeneric, "v%d+") do
+					table.insert(genList, name)
+				end
+
+				for name in string.gmatch(actualParams, "[%w_]+") do
+					table.insert(actList, name)
+				end
+
+				for i = 1, math.min(#genList, #actList) do
+					varMapping[genList[i]] = actList[i]
+				end
+			end
+			code = string.gsub(code, "%f[%w_]f_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
+			code = string.gsub(code, "%f[%w_]a_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
+			code = string.gsub(code, "%f[%w_]t_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
+			code = string.gsub(code, "%f[%w_]l_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
+			code = string.gsub(code, "%f[%w_]v_([%w_]+)_%d+_[ultvfa]%f[^%w_]", "%1")
+			code = string.gsub(code, "([%w_]+)_u%f[^%w_]", "%1")
+			code = string.gsub(code, "([%w_]+)_l%f[^%w_]", "%1")
+			code = string.gsub(code, "([%w_]+)_t%f[^%w_]", "%1")
+			code = string.gsub(code, "([%w_]+)_v%f[^%w_]", "%1")
+			code = string.gsub(code, "([%w_]+)_f%f[^%w_]", "%1")
+			code = string.gsub(code, "([%w_]+)_a%f[^%w_]", "%1")
+			code = string.gsub(code, "%s*%-%-%[%[%s*Name:%s*[^%]]+%]%]", "")
+			code = string.gsub(code, "%s*%-%-%[%[%s*Names:%s*[^%]]+%]%]", "")
+			code = string.gsub(code, "%s*%-%-%[%[%s*Params:%s*[^%]]+%]%]", "")
+			code = string.gsub(code, "%s*%-%-%[%[%s*Line:%s*[^%]]+%]%]", "")
+			code = string.gsub(code, "%s*%-%- upvalues:[^\n]*\n?", "")
+			code = string.gsub(code, "%-%-%[%[.-%]%]", "") 
+			code = string.gsub(code, "([%)%}%]])%s+(local%s+)", "%1\n\t%2")
+			code = string.gsub(code, "(end)%s+(local%s+)", "%1\n\t%2")
+			code = string.gsub(code, "(else)%s+(local%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(then)%s+(local%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(do)%s+(local%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "([%)%}%]])%s+(if%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(end)%s+(if%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(else)%s+(if%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "([%)%}%]])%s+(for%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(end)%s+(for%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(do)%s+(for%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "([%)%}%]])%s+(while%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(end)%s+(while%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "([%)%}%]])%s+(return%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(else)%s+(return%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "(then)%s+(return%s+)", "%1\n\t\t%2")
+			code = string.gsub(code, "([%)%}%]])%s+(function%s+)", "%1\n\t%2")
+			code = string.gsub(code, "(end)%s+(function%s+)", "%1\n\t%2")
+			code = string.gsub(code, "([^%s])%s+(end)([^%w])", "%1\n\t%2%3")
+			local sortedVars = {}
+			for gen, act in pairs(varMapping) do
+				table.insert(sortedVars, {gen = gen, act = act})
+			end
+
+			table.sort(sortedVars, function(a, b)
+				return #a.gen > #b.gen
+			end)
+			for _, pair in ipairs(sortedVars) do
+				local gen = pair.gen
+				local act = pair.act
+				local escapedGen = string.gsub(gen, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+				code = string.gsub(code, "%f[%w_]" .. escapedGen .. "%f[^%w_]", act)
+			end
+			code = string.gsub(code, "[ \t]+\n", "\n")
+			code = string.gsub(code, "[ \t]+$", "")
+			code = string.gsub(code, "\n\n\n+", "\n\n")
+			code = string.gsub(code, ",([^%s])", ", %1")
+			code = string.gsub(code, "([%w_])=([%w_])", "%1 = %2")
+			code = string.gsub(code, "([%w_])==([%w_])", "%1 == %2")
+			code = string.gsub(code, "([%w_])~=([%w_])", "%1 ~= %2")
+			code = string.gsub(code, "([%w_])<([%w_])", "%1 < %2")
+			code = string.gsub(code, "([%w_])>([%w_])", "%1 > %2")
+			code = string.gsub(code, "([%w_])<=([%w_])", "%1 <= %2")
+			code = string.gsub(code, "([%w_])>=([%w_])", "%1 >= %2")
+			local lines = {}
+			for line in string.gmatch(code, "[^\n]+") do
+				local indent = string.match(line, "^[\t ]+") or ""
+				local content = string.gsub(line, "^[\t ]+", "")
+				indent = string.gsub(indent, "    ", "\t")
+				table.insert(lines, indent .. content)
+			end
+			code = table.concat(lines, "\n")
+			return code
+		end)
+
+		if not success then
+			warn("Error during decompilation: ", result)
+			return code
+		end
+
+		return rescriptcode(result)
+	end
 	if getscriptbytecode then
 		getbytecode = construct_TimeoutHandler(3, getscriptbytecode) -- ? Solara fix
 	end
@@ -3260,7 +3260,7 @@ end
 			end		
 		end	
 	end
-	
+
 	if (OPTIONS.SaveBytecode or OPTIONS.SaveBytecodeIfDecompilerFails) and getscriptbytecode then
 		SaveBytecode = function(script)
 			local s, bytecode = getbytecode(script)
@@ -3296,12 +3296,12 @@ end
 		if OPTIONS.noscripts then
 			ldecompile = function(script)
 				local output = "-- Decompiling is disabled"
-					if OPTIONS.SaveBytecodeIfDecompilerFails and SaveBytecode then
-						local bc = SaveBytecode(script)
-						if bc then
-							output = bc..output
-						end
+				if OPTIONS.SaveBytecodeIfDecompilerFails and SaveBytecode then
+					local bc = SaveBytecode(script)
+					if bc then
+						output = bc..output
 					end
+				end
 				return output
 			end
 		elseif Decompiler then
@@ -3365,12 +3365,12 @@ end
 		else
 			ldecompile = function(script)
 				local output = "-- Your Executor does NOT have a Decompiler"
-					if OPTIONS.SaveBytecodeIfDecompilerFails and SaveBytecode then
-						local bc = SaveBytecode(script)
-						if bc then
-							output = bc..output
-						end
+				if OPTIONS.SaveBytecodeIfDecompilerFails and SaveBytecode then
+					local bc = SaveBytecode(script)
+					if bc then
+						output = bc..output
 					end
+				end
 				return output
 			end
 		end
@@ -3406,11 +3406,11 @@ end
 		return result == nil
 			or result == "can't get value"
 			or type(result) == "string"
-				and (category == "Enum" or string_find(result, "Unable to get property " .. propertyName))
+			and (category == "Enum" or string_find(result, "Unable to get property " .. propertyName))
 	end
 
 	local __BREAK = string.gsub("__BREAK" .. service.HttpService:GenerateGUID(false), "[^%w_]+", "")
-	
+
 	local function ReadProperty(instance, property, propertyName, special, category, optional)
 		local raw = __BREAK
 
@@ -3505,10 +3505,10 @@ end
 
 		return raw
 	end
-	
+
 	local function ReadPropertyFull(instance, Property, PropertyName, Special, Category, Optional)
 		if Crashlog then Crashlog("  Reading property "..PropertyName) end
-		
+
 		local raw = ReadProperty(instance, Property, PropertyName, Special, Category, Optional)
 
 		if raw == __BREAK then -- ! Assuming __BREAK is always returned when there's a failure to read a property
@@ -3546,7 +3546,7 @@ end
 		if Crashlog then Crashlog("    Property "..PropertyName.." read successfully") end
 		return raw
 	end
-	
+
 	local function GetInheritedProps(className, useNotSaveableProperties, classesToStopBefore)
 		local prop_list = {}
 		local layer = ClassList[className]
@@ -3573,7 +3573,7 @@ end
 		end
 		return prop_list
 	end
-	
+
 	local function GetPropertiesTableFromInstance(instance, CustomClassName) -- for save_specific
 		local ClassName = CustomClassName or instance.ClassName
 		local PropertiesTable = {}
@@ -3606,13 +3606,13 @@ end
 			if SharedStringOverwrite and ValueType == "BinaryString" then -- TODO: Convert this to table if more types are added
 				ValueType = "SharedString"
 			end
-			
+
 			if Category == "Enum" then
 				ValueType = "Enum"
 			elseif Category == "Class" then
 				ValueType = "Class"
 			end
-			
+
 			PropertiesTable[PropertyName] = {raw = raw, ValueType = ValueType, Optional = Optional}
 		end
 		return PropertiesTable
@@ -3631,7 +3631,7 @@ end
 
 		return value, tag or valueType
 	end
-	
+
 	local function ReturnAttributeValue(Property, raw)
 		local ValueType, Category = Property.ValueType, Property.Category
 		if raw == nil then
@@ -3647,16 +3647,16 @@ end
 				return raw:GetFullName() -- There is probally a better way to save class properties within attributes
 			end	
 		end
-		
+
 		if Anonymous then
 			local LocalPlayer = service.Players.LocalPlayer
 			if LocalPlayer then
 				if ValueType == "string" then
 					return gsubCaseInsensitive(
-							string.gsub(raw, LocalPlayer.UserId, Anonymous.UserId),
-							LocalPlayer.Name,
-							Anonymous.Name
-						)
+						string.gsub(raw, LocalPlayer.UserId, Anonymous.UserId),
+						LocalPlayer.Name,
+						Anonymous.Name
+					)
 				elseif ArrayToDict({"int", "int64", "double", "float"})[ValueType] then
 					if raw == LocalPlayer.UserId then 
 						return Anonymous.UserId
@@ -3664,7 +3664,7 @@ end
 				end
 			end
 		end
-		
+
 		-- Types not added: CSGPropertyData, Color3uint8, Content, FacsReplicationData, QDir (should never be used), QFont, (should never be used) ReplicationPV, SecurityCapabilities (should never be used)
 		if ArrayToDict({"string", "bool", "UDim", "UDim2", "BrickColor", "Color3", "Vector2", "Vector3", "CFrame", "NumberSequence", "ColorSequence", "NumberRange", "Rect", "Font", "SystemAddress", "Enum", "int", "int64", "double", "float", "BinaryString", "SharedString", "ContentId", "OptionalCoordinateFrame", "UniqueId", "NetAssetRef"})[ValueType] then
 			return(raw)	
@@ -3678,12 +3678,12 @@ end
 			return -- All the properties with the ProtectedString valuetype are source related, and thus useless
 		else
 			--if __DEBUG_MODE then
-				warn("No type support for "..ValueType.." for SaveAsAttributes") -- * We print this anyway because very important
+			warn("No type support for "..ValueType.." for SaveAsAttributes") -- * We print this anyway because very important
 			--end
 		end
-		
+
 	end
-	
+
 	local function InheritsFix(fixes, className, instance)
 		local Fix = fixes[className]
 		if Fix then
@@ -3757,7 +3757,7 @@ end
 							-- * It can be empty, because it's optional
 							-- ? Though why even save it if it's empty considering it's optional
 							continue
-						-- value, tag = "", ValueType
+							-- value, tag = "", ValueType
 						else
 							value, tag = ReturnValueAndTag(raw, ValueType, Descriptor)
 						end
@@ -3776,11 +3776,11 @@ end
 			instance:SetAttribute(__BREAK, nil)
 			return
 		end
-		
+
 		if not InstanceToSet then
 			InstanceToSet = instance
 		end	
-		
+
 		local ClassName = instance.ClassName
 		local TableToUse
 		if useNotSaveableProperties then 
@@ -3806,11 +3806,11 @@ end
 			local Special, Category, Optional = Property.Special, Property.Category, Property.Optional
 
 			local raw = ReadPropertyFull(instance, Property, PropertyName, Special, Category, Optional)
-						
+
 			if raw == __BREAK then
 				continue
 			end
-					
+
 			local value = ReturnAttributeValue(Property, raw)
 			if value ~= nil then
 				local ok, errorm = pcall(function()
@@ -3843,13 +3843,13 @@ end
 					continue
 				end
 			end
-			
+
 			if Crashlog then Crashlog("Saving Instance "..instance:GetFullName().." Class "..ClassName) end
-			
+
 			if SaveAsAttributes then
 				SaveAttributes(instance, true, "__NotSaveable_")	
 			end
-			
+
 			if not DecompileIgnoring then
 				DecompileIgnoring = DecompileIgnore[instance]
 
@@ -3960,7 +3960,7 @@ end
 						local Special, Category, Optional = Property.Special, Property.Category, Property.Optional
 
 						local raw = ReadPropertyFull(instance, Property, PropertyName, Special, Category, Optional)
-						
+
 						if raw == __BREAK then
 							continue
 						end
@@ -3997,7 +3997,7 @@ end
 										Fix
 										and (
 											PropertyName == "PlayerToHideFrom"
-											or ValueType ~= "Instance" and ValueType ~= Fix
+												or ValueType ~= "Instance" and ValueType ~= Fix
 										)
 									then
 										-- * To avoid errors
@@ -4089,8 +4089,8 @@ end
 											if
 												isLocalScript and instance.RunContext == Enum.RunContext.Server
 												or not isLocalScript
-													and instance:IsA("Script")
-													and instance.RunContext ~= Enum.RunContext.Client
+												and instance:IsA("Script")
+												and instance.RunContext ~= Enum.RunContext.Client
 											then
 												value = "-- Server Scripts CANNOT be saved due to Filtering Enabled!" -- TODO: Could be not just server scripts in the future
 											else
@@ -4106,7 +4106,7 @@ end
 												else
 													value = ldecompile(instance)
 												end
-												
+
 												local DecompilerFailedMessages = {"Failed to decompile", "Something went wrong when decompiling", "Decompilation failed", "Update the decompiling script", "Check decompiling options for errors", "Failed to generate AST"} -- Some from Konstant, Oracle and USSI. If you have anymore decompiler errors please submit them.
 												if OPTIONS.SaveBytecodeIfDecompilerFails and SaveBytecode and not IsCompilationError then
 													for _, v in DecompilerFailedMessages do
@@ -4145,7 +4145,7 @@ end
 											-- * It can be empty, because it's optional
 											-- ? Though why even save it if it's empty considering it's optional
 											continue
-										-- value, tag = "", ValueType
+											-- value, tag = "", ValueType
 										else
 											value, tag = ReturnValueAndTag(raw, ValueType, Descriptor)
 										end
@@ -4394,7 +4394,7 @@ end
 				local SEGMENT_SIZE = 4145728 -- Celery has an arbitrary savefile/appendfile size limit of ~4MB for reasons unknown. This is a workaround to save the file in segments.
 
 				local totallen, currentlen = math.ceil(totalsize / SEGMENT_SIZE), 1
-				
+
 				writefile(placename, header)
 				for _, chunk in chunks do
 					local length = math.ceil(chunk.size / SEGMENT_SIZE)
@@ -4600,8 +4600,8 @@ end
 				if getconnections then
 					for _, c in getconnections(Idled) do
 						if not pcall(function()
-							c:Disable()
-						end) then
+								c:Disable()
+							end) then
 							pcall(function()
 								c:Disconnect()
 							end)
@@ -4671,5 +4671,5 @@ end
 			game:Shutdown()
 		end
 	end
-
+end
 return synsaveinstance
