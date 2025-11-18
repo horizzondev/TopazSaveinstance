@@ -4671,6 +4671,5 @@ end
 			game:Shutdown()
 		end
 	end
-end
 
 return synsaveinstance
