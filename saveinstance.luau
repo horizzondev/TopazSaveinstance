@@ -3584,15 +3584,21 @@ end
 		return prop_list
 	end
 	
-	local function GetPropertiesTableFromInstance(instance, CustomClassName) -- for save_specific
+	local OverwriteValueTypes = {
+	BinaryString = "SharedString",
+	}
+
+	local function GetPropertiesTableFromInstance(instance, CustomClassName)
 		local ClassName = CustomClassName or instance.ClassName
 		local PropertiesTable = {}
 		local proplist = inherited_properties[ClassName]
+
 		if not proplist then
 			proplist = GetInheritedProps(ClassName)
 			inherited_properties[ClassName] = proplist
 		end
-		for _, Property in proplist do 
+
+		for _, Property in proplist do
 			local PropertyName = Property.Name
 
 			if IgnoreProperties[PropertyName] then
@@ -3601,32 +3607,36 @@ end
 
 			local ValueType = Property.ValueType
 
-			if IgnoreSharedStrings and ValueType == "SharedString" then -- ? More info in Options
+			if IgnoreSharedStrings and ValueType == "SharedString" then
 				continue
 			end
 
 			local Special, Category, Optional = Property.Special, Property.Category, Property.Optional
-
 			local raw = ReadPropertyFull(instance, Property, PropertyName, Special, Category, Optional)
 
 			if raw == __BREAK then
 				continue
 			end
 
-			if SharedStringOverwrite and ValueType == "BinaryString" then -- TODO: Convert this to table if more types are added
-				ValueType = "SharedString"
+			if SharedStringOverwrite and OverwriteValueTypes[ValueType] then
+				ValueType = OverwriteValueTypes[ValueType]
 			end
-			
+
 			if Category == "Enum" then
 				ValueType = "Enum"
 			elseif Category == "Class" then
 				ValueType = "Class"
 			end
-			
-			PropertiesTable[PropertyName] = {raw = raw, ValueType = ValueType, Optional = Optional}
+
+			PropertiesTable[PropertyName] = {
+				raw = raw,
+				ValueType = ValueType,
+				Optional = Optional
+			}
 		end
+
 		return PropertiesTable
-	end	
+	end
 
 	local function ReturnItem(className, instance)
 		return '<Item class="' .. className .. '" referent="' .. GetRef(instance) .. '"><Properties>' -- TODO: Ideally this shouldn't return <Properties> as well as the line below to close it IF  IgnorePropertiesOfNotScriptsOnScriptsMode is Enabled OR If all properties are default (reduces file size by at least 1.4%)
