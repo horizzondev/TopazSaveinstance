@@ -2364,10 +2364,20 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 			end
 		end
 
-		-- TODO: Merge BaseWrap & Attachment & AdPortal fix (put all under MeshPart container)
-		-- TODO?:
+		
 		-- DebuggerWatch DebuggerWatch must be a child of ScriptDebugger
 		-- PluginAction Parent of PluginAction must be Plugin or PluginMenu that created it!
+		local function construct_GenericPartFix(containerClassName)
+			return construct_NilinstanceFix(
+				containerClassName .. " must be parented to a Part or BasePart",
+				"Part"
+			)
+		end
+
+		OPTIONS.NilInstancesFixes.AdPortal = construct_GenericPartFix("AdPortal")
+		OPTIONS.NilInstancesFixes.Attachment = construct_GenericPartFix("Attachment")
+		OPTIONS.NilInstancesFixes.BaseWrap = construct_NilinstanceFix("BaseWrap must be parented to a MeshPart", "MeshPart")
+		
 		OPTIONS.NilInstancesFixes.Animator = 
 			construct_NilinstanceFix("Animator has to be placed under Humanoid or AnimationController", "AnimationController")
 		OPTIONS.NilInstancesFixes.AdPortal = 
@@ -3563,15 +3573,21 @@ end
 		return prop_list
 	end
 	
-	local function GetPropertiesTableFromInstance(instance, CustomClassName) -- for save_specific
+	local OverwriteValueTypes = {
+	BinaryString = "SharedString",
+	}
+
+	local function GetPropertiesTableFromInstance(instance, CustomClassName)
 		local ClassName = CustomClassName or instance.ClassName
 		local PropertiesTable = {}
 		local proplist = inherited_properties[ClassName]
+
 		if not proplist then
 			proplist = GetInheritedProps(ClassName)
 			inherited_properties[ClassName] = proplist
 		end
-		for _, Property in proplist do 
+
+		for _, Property in proplist do
 			local PropertyName = Property.Name
 
 			if IgnoreProperties[PropertyName] then
@@ -3580,32 +3596,36 @@ end
 
 			local ValueType = Property.ValueType
 
-			if IgnoreSharedStrings and ValueType == "SharedString" then -- ? More info in Options
+			if IgnoreSharedStrings and ValueType == "SharedString" then
 				continue
 			end
 
 			local Special, Category, Optional = Property.Special, Property.Category, Property.Optional
-
 			local raw = ReadPropertyFull(instance, Property, PropertyName, Special, Category, Optional)
 
 			if raw == __BREAK then
 				continue
 			end
 
-			if SharedStringOverwrite and ValueType == "BinaryString" then -- TODO: Convert this to table if more types are added
-				ValueType = "SharedString"
+			if SharedStringOverwrite and OverwriteValueTypes[ValueType] then
+				ValueType = OverwriteValueTypes[ValueType]
 			end
-			
+
 			if Category == "Enum" then
 				ValueType = "Enum"
 			elseif Category == "Class" then
 				ValueType = "Class"
 			end
-			
-			PropertiesTable[PropertyName] = {raw = raw, ValueType = ValueType, Optional = Optional}
+
+			PropertiesTable[PropertyName] = {
+				raw = raw,
+				ValueType = ValueType,
+				Optional = Optional
+			}
 		end
+
 		return PropertiesTable
-	end	
+	end
 
 	local function ReturnItem(className, instance)
 		return '<Item class="' .. className .. '" referent="' .. GetRef(instance) .. '"><Properties>' -- TODO: Ideally this shouldn't return <Properties> as well as the line below to close it IF  IgnorePropertiesOfNotScriptsOnScriptsMode is Enabled OR If all properties are default (reduces file size by at least 1.4%)
@@ -4356,18 +4376,17 @@ end
 		save_cache(true)
 		do
 			-- ! Assuming we only write to file once hence why we only filter once
-			-- TODO This might cause issues on non-unique Usernames (ex. "Cake" if game is about cakes then everything supposedly related to your name will be replaced with "Roblox"); Certain UserIds might also affect numbers, like if your UserId is 2481848 and there is some number that goes like "1.248184818837" then that the matched part will be replaced with 1, potentially making the number incorrect.
-			-- TODO So for now it's best to keep this disabled by default
-			-- TODO It's also not smart to filter entire file string at the end as this might also affect decompiled scripts content, which has no way of containing any user-related information. It would be better to use gsub in string Descriptor and such
-			if Anonymous then
 				local LocalPlayer = service.Players.LocalPlayer
 				if LocalPlayer then
+					local userId = tostring(LocalPlayer.UserId)
+					local userName = LocalPlayer.Name
+		
+					local userIdPattern = "%f[%d]" .. userId .. "%f[%D]"
+					local userNamePattern = "%f[%w]" .. userName .. "%f[%W]"
+		
 					for _, chunk in chunks do
-						chunk.str = gsubCaseInsensitive(
-							string.gsub(chunk.str, LocalPlayer.UserId, Anonymous.UserId),
-							LocalPlayer.Name,
-							Anonymous.Name
-						)
+						chunk.str = string.gsub(chunk.str, userIdPattern, Anonymous.UserId)
+						chunk.str = gsubCaseInsensitive(chunk.str, userName, Anonymous.Name)
 					end
 				end
 			end
