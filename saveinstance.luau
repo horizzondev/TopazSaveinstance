@@ -2043,8 +2043,7 @@ All options are case insensitive.
   - Default: true
 - decomptype: `string`
   - "custom" - for a built-in custom decompiler.
-  - Uses Konstant 2.1, locally hosted instead of the API to increase speed. ([Konstant Discord Server](https://discord.gg/brNTY8nX8t), [Konstant Decompiled Source Code](https://raw.githubusercontent.com/horizzondev/TopazSaveinstance/refs/heads/main/Dependencies/Konstant%20V2.1.luau))
-  - Default: Your executor's decompiler, if available. Otherwise uses "custom" if not.
+  - Default: uses Topaz decompiler, if available. Otherwise uses "custom" if not.
 - timeout: `number`
   - If the decompilation run time exceeds this value it gets cancelled.
   - Set to -1 to disable timeout (unreliable).
@@ -3183,7 +3182,7 @@ end
 			local s, bytecode = getbytecode(script)
 
 			if s and bytecode and bytecode ~= "" then
-				if string.byte(bytecode, 1, 1) == 0 then -- in scripts that failed to compile, byte 1, the version header (which is 6 is all other cases) is replaced with a null byte. Look a konstant source code for proof.
+				if string.byte(bytecode, 1, 1) == 0 then 
 					return("-- The script has a compilation error:\n-- "..string.sub(bytecode, 2)) -- the formatted string for a compilation error. String.sub is to cut off the heading byte.
 				end
 			end		
@@ -4036,7 +4035,7 @@ end
 													value = ldecompile(instance)
 												end
 
-												local DecompilerFailedMessages = {"Failed to decompile", "Something went wrong when decompiling", "Decompilation failed", "Update the decompiling script", "Check decompiling options for errors", "Failed to generate AST"} -- Some from Konstant, Oracle and USSI. If you have anymore decompiler errors please submit them.
+												local DecompilerFailedMessages = {"Failed to decompile", "Something went wrong when decompiling", "Decompilation failed", "Update the decompiling script", "Check decompiling options for errors", "Failed to generate AST"} 
 												if OPTIONS.SaveBytecodeIfDecompilerFails and SaveBytecode and not IsCompilationError then
 													for _, v in DecompilerFailedMessages do
 														if string.find(value, v, 1, true) then
