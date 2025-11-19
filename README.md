@@ -20,7 +20,7 @@ synsaveinstance(Options)
     - place 1 example.rbxlx
     - place 1 example(2).rbxlx
 - Custom Decompiler (decomptype)
-    - Uses a locally hosted version of Konstant 2.1 for blazingly fast speed
+    - Uses Topaz
     - Enabled when there is no decompiler, or with the option decomptype = "custom"
 - Option SaveBytecodeIfDecompilerFails
   - Used to exist in old USSI

@@ -2888,6 +2888,10 @@ local function lookgreat(code)
 		code = string.gsub(code, "%f[%w_]v%d+_([%w_]+)%f[^%w_]", "%1")
 		code = string.gsub(code, "%f[%w_]u%d+_([%w_]+)%f[^%w_]", "%1")
 		code = string.gsub(code, "%f[%w_]p%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]t%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]i%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]a%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]f%d+_([%w_]+)%f[^%w_]", "%1")
 		
 		return code
 	end)
@@ -2943,14 +2947,14 @@ local function rescriptcode(code, skipIndent)
 			end
 		end
 
-for varName, modulePath in string.gmatch(code, "local%s+([%w_]+)%s*=%s*require%s*%(") do
-	if varName ~= "_" then
-		local fullRequire = string.match(code, "local%s+" .. varName .. "%s*=%s*require%s*%([^%)]+%.([%w_]+)%s*%)")
-		if fullRequire then
-			varMapping[varName] = getUniqueName(fullRequire)
+		for varName, modulePath in string.gmatch(code, "local%s+([%w_]+)%s*=%s*require%s*%(") do
+			if varName ~= "_" then
+				local fullRequire = string.match(code, "local%s+" .. varName .. "%s*=%s*require%s*%([^%)]+%.([%w_]+)%s*%)")
+				if fullRequire then
+					varMapping[varName] = getUniqueName(fullRequire)
+				end
+			end
 		end
-	end
-end
 
 		local firstLine = string.match(code, "^[^\n]+")
 		if firstLine then
