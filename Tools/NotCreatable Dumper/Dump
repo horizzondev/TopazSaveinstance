@@ -1,5 +1,8 @@
+version-874602c66c70451a
 
 Object
+
+AnimationNode
 
 Capture
 
@@ -312,6 +315,8 @@ TerrainModifyOperation
 TerrainReadOperation
 
 TerrainWriteOperation
+
+VideoSampler
 
 WebStreamClient
 

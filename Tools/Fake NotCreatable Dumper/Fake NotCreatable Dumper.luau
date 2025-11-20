@@ -1,4 +1,5 @@
--- Dumps instances that are either NotCreatable but can be created, or Creatable but cannot be created
+-- Dumps all properties that get changed when NotScriptable property is changed. This means they're somehow related to it and/or are in sync with it
+-- Doesnt get everything!
 local service = setmetatable({}, {
 	__index = function(Self, Name)
 		local Service = game:GetService(Name)

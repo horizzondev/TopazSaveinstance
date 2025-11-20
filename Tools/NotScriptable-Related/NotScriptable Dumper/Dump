@@ -1,3 +1,4 @@
+version-874602c66c70451a
 
 EditableImage.ImageData {BinaryString}
 
@@ -10,6 +11,8 @@ Instance.Tags {BinaryString}
 
 AnimationClip.GuidBinaryString {BinaryString}
 
+AnimationNodeDefinition.InputPinData {BinaryString}
+
 AnimationRigData.label {BinaryString}
 AnimationRigData.name {BinaryString}
 AnimationRigData.parent {BinaryString}
@@ -20,7 +23,6 @@ AnimationRigData.transform {BinaryString}
 StarterGui.RtlTextSupport {RtlTextSupport}
 StarterGui.VirtualCursorMode {VirtualCursorMode}
 
-BaseWrap.HSRAssetId {ContentId}
 BaseWrap.HSRData {SharedString}
 BaseWrap.HSRMeshIdData {SharedString}
 BaseWrap.TemporaryCageMeshId {ContentId}
@@ -66,8 +68,6 @@ HumanoidDescription.EquippedEmotesDataInternal {string}
 InsertService.AllowClientInsertModels {bool}
 
 Lighting.ExtendLightRangeTo120 {RolloutState}
-Lighting.LightingStyle {LightingStyle}
-Lighting.PrioritizeLightingQuality {bool}
 
 LocalizationTable.Contents {string}
 
@@ -128,12 +128,12 @@ BasePart.MaterialVariantSerialized {string}
 BasePart.size {Vector3}
 
 FormFactorPart.formFactorRaw {FormFactor}
-formFactorRaw -> FormFactor
-formFactorRaw -> formFactor
+formFactorRaw -> FormFactor {POTENTIAL PROXY}
+formFactorRaw -> formFactor {POTENTIAL PROXY}
 
 Part.shape {PartType}
-shape -> Shape
-shape -> shap
+shape -> Shape {POTENTIAL PROXY}
+shape -> shap {POTENTIAL PROXY}
 
 Terrain.AcquisitionMethod {TerrainAcquisitionMethod}
 Terrain.Decoration {bool}
@@ -141,13 +141,13 @@ Terrain.GrassLength {float}
 Terrain.MaterialColors {BinaryString}
 Terrain.PhysicsGrid {BinaryString}
 Terrain.SmoothGrid {BinaryString}
-AcquisitionMethod -> LastUsedModificationMethod
+AcquisitionMethod -> LastUsedModificationMethod {POTENTIAL PROXY}
 
 TriangleMeshPart.AeroMeshData {SharedString}
 TriangleMeshPart.FluidFidelityInternal {FluidFidelity}
 TriangleMeshPart.InertiaMigrated {bool}
 TriangleMeshPart.PhysicalConfigData {SharedString}
-FluidFidelityInternal -> FluidFidelity
+FluidFidelityInternal -> FluidFidelity {POTENTIAL PROXY}
 
 MeshPart.InitialSize {Vector3}
 MeshPart.PhysicsData {BinaryString}
@@ -168,13 +168,14 @@ PartOperation.SolidMeshHolder {NetAssetRef}
 NegateOperation.PreviousOperation {NegateOperationHiddenHistory}
 
 TrussPart.style {Style}
-style -> Style
+style -> Style {POTENTIAL PROXY}
 
 Model.ModelMeshCFrame {CFrame}
 Model.ModelMeshData {SharedString}
 Model.ModelMeshSize {Vector3}
 Model.NeedsPivotMigration {bool}
 Model.ScaleFactor {float}
+Model.SlimHash {SharedString}
 Model.WorldPivotData {OptionalCoordinateFrame}
 
 Workspace.AvatarUnificationMode {AvatarUnificationMode}
@@ -202,12 +203,10 @@ Workspace.StreamingTargetRadius {int}
 Workspace.TerrainWeldsFixed {bool}
 Workspace.TouchEventsUseCollisionGroups {RolloutState}
 Workspace.TouchesUseCollisionGroups {bool}
-Workspace.UseImprovedModelLod {RolloutState}
 Workspace.UseNewLuauTypeSolver {RolloutState}
-UseNewLuauTypeSolver -> PhysicsImprovedSleep
-UseNewLuauTypeSolver -> TouchEventsUseCollisionGroups
-UseNewLuauTypeSolver -> UseImprovedModelLod
-SignalBehavior2 -> SignalBehavior
+UseNewLuauTypeSolver -> PhysicsImprovedSleep {POTENTIAL PROXY}
+UseNewLuauTypeSolver -> TouchEventsUseCollisionGroups {POTENTIAL PROXY}
+SignalBehavior2 -> SignalBehavior {POTENTIAL PROXY}
 
 PackageLink.PackageIdSerialize {ContentId}
 PackageLink.VersionIdSerialize {int64}
@@ -234,12 +233,15 @@ Smoke.size_xml {float}
 SoundService.VolumetricAudio {VolumetricAudio}
 
 StarterPlayer.AvatarJointUpgrade_SerializedRollout {RolloutState}
+StarterPlayer.CreateDefaultPlayerModule {bool}
 StarterPlayer.EnableDynamicHeads {LoadDynamicHeads}
 StarterPlayer.LoadCharacterLayeredClothing {LoadCharacterLayeredClothing}
-AvatarJointUpgrade_SerializedRollout -> AvatarJointUpgrade
-LoadCharacterLayeredClothing -> LoadCharacterLayeredClothing 
+AvatarJointUpgrade_SerializedRollout -> AvatarJointUpgrade {POTENTIAL PROXY}
+LoadCharacterLayeredClothing -> LoadCharacterLayeredClothing  {POTENTIAL PROXY}
 
 StyleRule.PropertiesSerialize {BinaryString}
+
+StyleQuery.ConditionsSerialize {BinaryString}
 
 TerrainDetail.TexturePack {ContentId}
 
@@ -264,6 +266,8 @@ BinaryStringValue.Value {BinaryString}
 DoubleConstrainedValue.value {double}
 
 IntConstrainedValue.value {int64}
+
+ValueCurve.ValuesAndTimes {BinaryString}
 
 WeldConstraint.CFrame0 {CFrame}
 WeldConstraint.Part0Internal {BasePart}
@@ -307,7 +311,6 @@ BasePart.MaterialVariantSerialized
 BasePart.ReplicationPV {Serialize: False}
 TriangleMeshPart.FluidFidelityInternal
 MeshPart.RenderFidelityReplicate {Serialize: False}
-PartOperation.SerializedCSGTree {Serialize: False}
 PartOperation.SerializedOperationGraph {Serialize: False}
 Workspace.ReplicateInstanceDestroySetting
 PackageLink.PackageIdSerialize
@@ -336,6 +339,7 @@ Studio.Enable Internal Beta Features {Scriptable}
 Studio.Enable Internal Features {Scriptable}
 Studio.LoadInternalPlugins {Scriptable}
 StyleRule.PropertiesSerialize
+StyleQuery.ConditionsSerialize
 TextSource.UserIdReplicated {Serialize: False}
 VideoPlayer.PlayingReplicating {Serialize: False}
 WeldConstraint.Part0Internal

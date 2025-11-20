@@ -124,9 +124,9 @@ do -- * Load Region of Déjà Vu
 		end
 	end
 
-	local function benchmark(f1, f2, ...)
+	local function benchmark(funcs, ...)
 		local ranking = table.create(2)
-		for i, f in { f1, f2 } do
+		for i, f in funcs do
 			local start = os.clock()
 			for _ = 1, 50 do
 				f(...)
@@ -137,6 +137,11 @@ do -- * Load Region of Déjà Vu
 			return a.t < b.t
 		end)
 		return ranking[1].f
+	end
+
+	local EncodingService = game:GetService("EncodingService")
+	local EncodingService_base64encode = function(raw)
+		return buffer.tostring(EncodingService:Base64Encode(buffer.fromstring(raw)))
 	end
 
 	local test_str = string.rep("\1\0\0\0\1\2\3\4\5\6\7", 50)
@@ -160,7 +165,8 @@ do -- * Load Region of Déjà Vu
 		-- * Tests if base64encode exists and works properly then benchmark it
 		if base64encode and base64encode("\1\0\0\0\1") == "AQAAAAE=" then
 			if rbxcrypt_base64encode then
-				base64encode = benchmark(base64encode, rbxcrypt_base64encode, test_str)
+			base64encode =
+				benchmark({ base64encode, rbxcrypt_base64encode, EncodingService_base64encode }, test_str)
 			end
 		else
 			base64encode = rbxcrypt_base64encode
@@ -349,8 +355,7 @@ local CAPABILITY_BITS = {
 }
 
 local function __COUNT_CAPABILITY_BITS(raw)
-	-- TODO tostring & string.split aren't ideal but this is the only way until the feature is out of the experimental phase (SecurityCapabilities.Contains exists but the Enums that it accepts lacks some hidden bits) - NotAccessible, Unknown, Restricted
-
+	-- ! Seems like both tostring & .Contains ignore high / internal bits (anything above CapabilityControl): RemoteCommand, InternalTest, PluginOrOpenCloud, Assistant. They're present when created & saved by Studio but can't be read through current means
 	local result = 0
 	for _, flag in string.split(tostring(raw), " | ") do
 		local bit = CAPABILITY_BITS[flag]
@@ -417,6 +422,13 @@ Binary_Descriptors = {
 			return b, len
 		end
 	end,
+	__writei64 = function(b, offset, raw)
+		local low = bit32.band(raw, 0xFFFFFFFF)
+		local high = (raw - low) / 0x100000000
+
+		buffer.writei32(b, offset, low)
+		buffer.writei32(b, offset + 4, high)
+	end,
 	__PACK_F32 = nil,
 	__PACK_I16 = nil,
 	__construct__PACKER = function(float)
@@ -475,10 +487,10 @@ Binary_Descriptors = {
 		return b, 8
 	end,
 	["UDim2"] = function(raw)
-		return Binary_Descriptors.__PACK_MULTIPLE(Binary_Descriptors.UDim, raw.X, raw.Y)
+		return Binary_Descriptors.__PACK_MULTIPLE(Binary_Descriptors["UDim"], raw.X, raw.Y)
 	end,
 	["Ray"] = function(raw)
-		return Binary_Descriptors.__PACK_MULTIPLE(Binary_Descriptors.Vector3, raw.Origin, raw.Direction)
+		return Binary_Descriptors.__PACK_MULTIPLE(Binary_Descriptors["Vector3"], raw.Origin, raw.Direction)
 	end,
 	["Faces"] = function(raw)
 		local b = buffer.create(4)
@@ -539,7 +551,7 @@ Binary_Descriptors = {
 		local b = buffer.create(len)
 
 		local __PACK_F32 = Binary_Descriptors.__PACK_F32
-		local pos = __PACK_F32(X, Y, Z)
+		local position = __PACK_F32(X, Y, Z)
 		buffer.copy(b, 0, pos)
 		-- buffer.writef32(b, 0, X)
 		-- buffer.writef32(b, 4, Y)
@@ -573,7 +585,7 @@ Binary_Descriptors = {
 		return b, len
 	end,
 	["EnumItem"] = function(raw)
-		local b_Name, Name_size = Binary_Descriptors.string(tostring(raw.EnumType))
+		local b_Name, Name_size = Binary_Descriptors["string"](tostring(raw.EnumType))
 
 		local len = Name_size + 4
 		local b = buffer.create(len)
@@ -597,7 +609,7 @@ Binary_Descriptors = {
 	end,
 	["ColorSequence"] = nil,
 	["ColorSequenceKeypoint"] = function(keypoint, b, offset)
-		local Value = Binary_Descriptors.Color3(keypoint.Value)
+		local Value = Binary_Descriptors["Color3"](keypoint.Value)
 
 		if not b then
 			b = buffer.create(20)
@@ -616,7 +628,7 @@ Binary_Descriptors = {
 		return Binary_Descriptors.__PACK_F32(raw.Min, raw.Max)
 	end,
 	["Rect"] = function(raw)
-		return Binary_Descriptors.__PACK_MULTIPLE(Binary_Descriptors.Vector2, raw.Min, raw.Max)
+		return Binary_Descriptors.__PACK_MULTIPLE(Binary_Descriptors["Vector2"], raw.Min, raw.Max)
 	end,
 	["PhysicalProperties"] = function(raw) -- ? Not sure yet (https://github.com/RobloxAPI/spec/blob/master/properties/drafts/AttributesSerializeFull.md#physicalproperties)
 		local len = 1
@@ -643,13 +655,13 @@ Binary_Descriptors = {
 		local HalfSize = raw.Size * 0.5
 
 		return Binary_Descriptors.__PACK_MULTIPLE(
-			Binary_Descriptors.Vector3,
+			Binary_Descriptors["Vector3"],
 			Translation - HalfSize, -- /App/util/Region3.cpp#L38
 			Translation + HalfSize -- /App/util/Region3.cpp#L42
 		)
 	end,
 	["Region3int16"] = function(raw)
-		return Binary_Descriptors.__PACK_MULTIPLE(Binary_Descriptors.Vector3int16, raw.Min, raw.Max)
+		return Binary_Descriptors.__PACK_MULTIPLE(Binary_Descriptors["Vector3int16"], raw.Min, raw.Max)
 	end,
 	["Font"] = 636 < CLIENT_VERSION and function(raw)
 		local string__descriptor = Binary_Descriptors.string
@@ -671,7 +683,7 @@ Binary_Descriptors = {
 
 		return b, len
 	end or function(raw)
-		local string__descriptor = Binary_Descriptors.string
+		local string__descriptor = Binary_Descriptors["string"]
 
 		local b_Family, Family_size = string__descriptor(raw.Family)
 		local b_CachedFaceId, CachedFaceId_size = string__descriptor("")
@@ -699,8 +711,8 @@ Binary_Descriptors = {
 			return b, 8
 		end
 
-		local capabilities = __COUNT_CAPABILITY_BITS(raw)
-
+		Binary_Descriptors.__writei64(b, 0, __COUNT_CAPABILITY_BITS(raw))
+		
 		local low = bit32.band(capabilities, 0xFFFFFFFF)
 		local high = (capabilities - low) / 0x100000000
 
@@ -711,7 +723,7 @@ Binary_Descriptors = {
 	end,
 	["Path2DControlPoint"] = function(raw)
 		return Binary_Descriptors.__PACK_MULTIPLE(
-			Binary_Descriptors.UDim2,
+			Binary_Descriptors["UDim2"],
 			raw.Position,
 			raw.LeftTangent,
 			raw.RightTangent
@@ -721,10 +733,10 @@ Binary_Descriptors = {
 
 do -- Sequences
 	Binary_Descriptors["NumberSequence"] =
-		Binary_Descriptors.__construct_Sequence(Binary_Descriptors.NumberSequenceKeypoint, 12)
+		Binary_Descriptors.__construct_Sequence(Binary_Descriptors["NumberSequenceKeypoint"], 12)
 
 	Binary_Descriptors["ColorSequence"] =
-		Binary_Descriptors.__construct_Sequence(Binary_Descriptors.ColorSequenceKeypoint, 20)
+		Binary_Descriptors.__construct_Sequence(Binary_Descriptors["ColorSequenceKeypoint"], 20)
 end
 
 do -- Vectors
@@ -814,7 +826,6 @@ XML_Descriptors = {
 		return "<axes>" .. __COUNT_BITS(raw.X, raw.Y, raw.Z) .. "</axes>"
 	end,
 
-	-- ? Roblox uses CDATA only for these (try to prove this wrong): Workspace.CollisionGroupData, Terrain.SmoothGrid, Terrain.MaterialColors, Terrain.PhysicsGrid, AnimationRigData.postTransform, AnimationRigData.preTransform, AnimationRigData.transform
 	-- ! Assuming all base64 encoded strings won't have newlines
 
 	BinaryString = function(raw)
@@ -1196,7 +1207,7 @@ do
 
 		buffer.writeu32(b, 0, attrs_n)
 
-		local string__descriptor = Binary_Descriptors.string
+		local string__descriptor = Binary_Descriptors["string"]
 		local offset = 4
 		for _, attr in attrs_sorted do
 			local b_Name, Name_size = string__descriptor(attr)
@@ -1286,6 +1297,44 @@ do
 		return buffer.tostring(b)
 	end
 
+	local function TransformsSerialize(transforms)
+		local transforms_n = #transforms
+
+		if transforms_n == 0 then
+			return "\1\0\0\0\0\0\0\0"
+		end
+
+		local b = buffer.create(8 + transforms_n * 48)
+
+		buffer.writeu32(b, 0, 1) -- ? [CONSTANT] Version byte (likely)
+		buffer.writeu32(b, 4, transforms_n)
+
+		local __PACK_F32 = Binary_Descriptors.__PACK_F32
+
+		local offset = 8
+		for _, transform in transforms do
+			local X, Y, Z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = transform:GetComponents()
+
+			local xBasis = __PACK_F32(R00, R01, R02)
+			buffer.copy(b, offset, xBasis)
+			offset += 12
+
+			local yBasis = __PACK_F32(R10, R11, R12)
+			buffer.copy(b, offset, yBasis)
+			offset += 12
+
+			local zBasis = __PACK_F32(R20, R21, R22)
+			buffer.copy(b, offset, zBasis)
+			offset += 12
+
+			local position = __PACK_F32(X, Y, Z)
+			buffer.copy(b, offset, position)
+			offset += 12
+		end
+
+		return buffer.tostring(b)
+	end
+	
 	local NotScriptableFixes = { 
 		Instance = {
 			AttributesSerialize = function(instance)
@@ -1323,9 +1372,10 @@ do
 				buffer.writeu32(b, 0, control_points_n)
 
 				local TypeID_Path2DControlPoint = attr_Type_IDs["Path2DControlPoint"]
+				local Path2DControlPoint_descriptor = Binary_Descriptors["Path2DControlPoint"]
 				local offset = 4
 				for i, point in control_points do
-					local buf = Binary_Descriptors.Path2DControlPoint(point)
+					local buf = Path2DControlPoint_descriptor(point)
 
 					buffer.writeu8(b, offset, TypeID_Path2DControlPoint)
 					offset += 1
@@ -1337,19 +1387,30 @@ do
 				return buffer.tostring(b)
 			end,
 		},
+		PlayerEmulatorService = {
+			SerializedEmulatedPolicyInfo = function(instance)
+				local EmulatedPolicyInfo = instance:GetEmulatedPolicyInfo()
+
+				if not next(EmulatedPolicyInfo) then
+					return ""
+				end
+
+				return AttributesSerialize(EmulatedPolicyInfo)
+			end,
+		},		
 		StyleRule = {
 			PropertiesSerialize = function(instance)
 				local props = instance:GetProperties()
 
 				if not next(props) then
-					return "\0\0\0\0"
+					return "\0\0\0\0" -- ! Essential
 				end
 
 				return AttributesSerialize(props)
 			end,
 		},
-		StyleQuery = { -- ? Not sure about this as this class doesn't serialize as of 699
-			ConditionsSerialize = function(instance)
+		StyleQuery = {
+				ConditionsSerialize = function(instance)
 				local props = instance:GetConditions()
 
 				if not next(props) then
@@ -1364,6 +1425,7 @@ do
 				local markers = instance:GetMarkers()
 				local markers_n = #markers
 
+				-- return "" -- Seems to also work
 				if markers_n == 0 then
 					return "\2\0\0\0\0\0\0\0\1\0\0\0\0\0\0\0"
 				end
@@ -1570,6 +1632,149 @@ do
 				return TransformsSerialize(Transforms)
 			end,
 		},
+		AnimationNodeDefinition = {
+			InputPinData = function(instance)
+				local input_pins = instance:GetInputPins()
+
+				local input_pins_n = #input_pins
+
+				if input_pins_n == 0 then
+					return "\1\0\0\0\0\0\0\0"
+				end
+
+				local buffer_size = 8
+
+				for _, pin in input_pins do
+					buffer_size += 4 + #pin
+				end
+
+				local b = buffer.create(buffer_size)
+
+				buffer.writeu32(b, 0, 1) -- ? [CONSTANT] Version byte (likely)
+				buffer.writeu32(b, 4, input_pins_n)
+
+				local string__descriptor = Binary_Descriptors["string"]
+				local offset = 8
+				for _, pin in input_pins do
+					local b_pin, pin_size = string__descriptor(pin)
+
+					buffer.copy(b, offset, b_pin)
+					offset += pin_size
+				end
+
+				return buffer.tostring(b)
+			end,
+		},
+		AnimationRigData = {
+			label = function(instance)
+				local labels = instance:GetLabels() -- RobloxScriptSecurity
+				local labels_n = #labels
+
+				if labels_n == 0 then
+					return "\1\0\0\0\0\0\0\0"
+				end
+
+				local b = buffer.create(8 + labels_n * 4)
+
+				buffer.writeu32(b, 0, 1) -- ? [CONSTANT] Version byte (likely)
+				buffer.writeu32(b, 4, labels_n)
+
+				local offset = 8
+
+				for _, label in labels do
+					buffer.writeu32(b, offset, label)
+					offset += 4
+				end
+
+				return buffer.tostring(b)
+			end,
+			name = function(instance)
+				local names = instance:GetNames() -- RobloxScriptSecurity
+				local names_n = #names
+
+				if names_n == 0 then
+					return "\1\0\0\0\0\0\0\0"
+				end
+
+				local buffer_size = 8
+
+				for _, name in names do
+					buffer_size += 4 + #name
+				end
+
+				local b = buffer.create(buffer_size)
+
+				buffer.writeu32(b, 0, 1) -- ? [CONSTANT] Version byte (likely)
+				buffer.writeu32(b, 4, names_n)
+
+				local offset = 8
+
+				for _, name in names do
+					buffer.writeu32(b, offset, #name)
+					offset += 4
+				end
+				for _, name in names do
+					buffer.writestring(b, offset, name)
+					offset += #name
+				end
+
+				return buffer.tostring(b)
+			end,
+			parent = function(instance)
+				local parents = instance:GetParents() -- RobloxScriptSecurity
+				local parents_n = #parents
+
+				if parents_n == 0 then
+					return "\1\0\0\0\0\0\0\0"
+				end
+
+				local b = buffer.create(8 + #parents * 2)
+
+				buffer.writeu32(b, 0, 1) -- ? [CONSTANT] Version byte (likely)
+				buffer.writeu32(b, 4, parents_n)
+
+				local offset = 8
+
+				for _, parent in parents do
+					buffer.writeu16(b, offset, parent) -- ? likely u8 with \0 (Null) terminators but this is safer in case they overflow beyond 255 values
+					offset += 2
+				end
+
+				return buffer.tostring(b)
+			end,
+			postTransform = function(instance)
+				return TransformsSerialize(instance:GetPostTransforms()) -- RobloxScriptSecurity
+			end,
+			preTransform = function(instance)
+				return TransformsSerialize(instance:GetPreTransforms()) -- RobloxScriptSecurity
+			end,
+			transform = function(instance)
+				return TransformsSerialize(instance:GetTransforms()) -- RobloxScriptSecurity
+			end,
+		},
+		AudioDeviceInput = {
+			AccessList = function(instance) -- CanSave & CanLoad false
+				local userid_accesslist = instance:GetUserIdAccessList()
+
+				local uid_n = #userid_accesslist
+
+				if uid_n == 0 then
+					return ""
+				end
+
+				local b = buffer.create(uid_n * 8)
+
+				local __writei64 = Binary_Descriptors.__writei64
+
+				local offset = 0
+				for _, user_id in userid_accesslist do
+					__writei64(b, offset, user_id)
+					offset += 8
+				end
+
+				return buffer.tostring(b)
+			end,
+		},		
 		AudioEmitter = {
 			AngleAttenuation = function(instance)
 				return AttenuationSerialize(instance:GetAngleAttenuation())
@@ -1615,7 +1820,7 @@ do
 		-- 	end
 		-- end},
 		Terrain = {
-			AcquisitionMethod = "LastUsedModificationMethod", -- ? Not sure, Requires capability RobloxScript
+			AcquisitionMethod = "LastUsedModificationMethod", -- ? Not sure, RobloxScriptSecurity
 			MaterialColors = function(instance) -- https://github.com/RobloxAPI/spec/blob/master/properties/MaterialColors.md
 				local TERRAIN_MATERIAL_COLORS =
 					{ --https://github.com/rojo-rbx/rbx-dom/blob/master/rbx_dom_lua/src/customProperties.lua#L5
@@ -1691,7 +1896,7 @@ do
 				return instance:GetContents() --service.HttpService:JSONEncode(instance:GetEntries())
 			end,
 		},
-		MaterialService = { Use2022MaterialsXml = "Use2022Materials" }, -- Requires capability RobloxScript
+		MaterialService = { Use2022MaterialsXml = "Use2022Materials" }, -- RobloxScriptSecurity
 
 		Model = {
 			ScaleFactor = function(instance)
@@ -1982,215 +2187,89 @@ end
 local GLOBAL_ENV = getgenv and getgenv() or _G or shared
 
 --[=[
-# Options Documentation
-> [!NOTE]
-All options are case insensitive.
-- __DEBUG_MODE: `boolean`
-  - This will print debug logs to console about unusual scenarios. Recommended to enable if you wish to help us improve our products and find bugs / issues with it!
-  - Default: false
-- Crashlog: `boolean`
-  - Logs every instance saved and property read to a file. Useful for debugging crashes.
-  - Default: false
-- ReadMe: `boolean`
-  - Includes a script parented to game in the file, containing credits, fixes, and the options used to generate the file.
-  - Default: true
-- SafeMode: `boolean`
-  - Kicks you before Saving, which prevents you from being detected in any game.
-  - Default: false
-- DisableGethiddenpropertyFallback: `boolean`
-  - Prevents detections in some games
-  - Default: true if executor gethiddenproperty is available and passes tests and the executor isn't Nihon, false otherwise
-- ShutdownWhenDone: `boolean`
-  - Shuts the game down after saveinstance is finished.
-  - Default: false
-- AntiIdle: `boolean`
-  - Prevents the 20-minute-Idle Kick.
-  - Default: true
-- Anonymous: `boolean | table`
-  - Cleans the file of any info related to your account like: Name, UserId.
-  - This is useful for some games that might store that info in GUIs or other Instances.
-  - Might potentially mess up parts of strings that contain characters that match your Name or parts of numbers that match your UserId.
-  - By default this replaces your Name with "Roblox" and UserId with "1".
-  - These replacements can be customized by providing a table with a name and userid. Ex: {Name = "Roblox", UserId = "1"}
-  - Default: false
-- ShowStatus: `boolean`
-  - Shows what Saveinstance is currently doing in a GUI.
-  - Default: true
-- Callback: `function`
-  - If set, the serialized data will be sent to the callback function instead of to file.
-  - Parameters:
-    - totalstr: The serialized data (`string`)
-    - chucks: An internal table used by the saveinstance (`table`)
-    - totalsize: The size of totalstr in bytes (`integer`)
-  - Default: false
-- mode: `string | table`
-  - Controls what instances to save.
-  - Valid Modes:
-    - optimized: Saves a hardcoded list of services, best for general use.
-    - full: Saves all services.
-    - scripts: Only saves direct children of the instance being saved that contain scripts
-      - This is useless as if the instance being saved is game, everything in workspace will be saved if there is one script in there (so for now, use a standalonescript dumper)
-    - To create a custom mode, provide a table of strings with each string being a service name to save.
-  - Change this to invalid mode like "invalid" if you only want ExtraInstances.
-  - "optimized" mode is NOT supported with @Object option.
-  - Default: "optimized"
-- noscripts: `boolean`
-  - Disables scripts from decompiling.
-  - Aliases: Decompile (inverse, takes priority)
-  - Default: false
-- scriptcache: `boolean`
-  - Caches decompiled scripts, so if a script with the same bytecode appears in a game multiple times, it only needs to be decompiled once.
-  - Default: true
-- decomptype: `string`
-  - "custom" - for a built-in custom decompiler.
-  - Default: uses Topaz decompiler, if available. Otherwise uses "custom" if not.
-- timeout: `number`
-  - If the decompilation run time exceeds this value it gets cancelled.
-  - Set to -1 to disable timeout (unreliable).
-  - Aliases: DecompileTimeout
-  - Default: 10
-- DecompileJobless: `boolean`
-  - Includes already decompiled code in the output. No new scripts are decompiled.
-  - Enables the option ScriptCache
-  - Default: false
-- SaveBytecode: `boolean`
-  -  Includes bytecode in the output. Useful if you wish to be able to decompile it yourself later.
-  -  Default: false
-- SaveCompilationErrors: `boolean`
-  - If a script fails to compile, this option saves the compilation error in the script instead of trying to pass it to the decompiler (or savebytecode), which will always result in a fail.
-  - Also applies when decompilation is disabled
-  - Default: true
-- SaveBytecodeIfDecompilerFails: `boolean`
-  - Includes bytecode in the output ONLY in these cases: if the decompiler fails (works on most decompilers), if noscripts is enabled, or if the decompiler isn't found. Useful if you wish to be able to decompile it yourself later.
-  - Option Savebytecode takes priority over this. 
-  - Default: false
-- SaveAsAttributes `boolean`
-  - Saves properties that cannot be saved or loaded by roblox studio (CanSave or CanLoad = false in the api dump) by converting them into attributes.
-  - These properties aren't saved otherwise, but nothing too useful is in them.
-  - Creates a Configuration instance parented to game that contains game's properties called DataModelProperties.
-  - Attribute Name Format: Prefix `__NotSaveable_` then the property name with all non alphanumeric characters removed besides underscores.
-  - Default: false
-- DecompileIgnore: `{Instance | Instance.ClassName | [Instance.ClassName]={Instance.Name}}`
-  - Ignores match & its descendants by default. To Ignore only the instance itself set the value to = false. Examples: "Chat", - Matches any instance with "Chat" ClassName, Players = {"MyPlayerName"} - Matches "Players" Class AND "MyPlayerName" Name ONLY, workspace - matches Instance by reference, [workspace] = false - matches Instance by reference and only ignores the instance itself and not its descendants.
-  - Default: {TextChatService}
-- IgnoreList: `{Instance | Instance.ClassName | [Instance.ClassName]={Instance.Name}}`
-  - Prevents instances from saving.
-  - Structure is similar to @DecompileIgnore except = false meaning if you ignore one instance it will automatically ignore its descendants.
-  - Aliases: InstancesBlacklist 
-  - Default: {CoreGui, CorePackages}
-- ExtraInstances: `{Instance}`
-  - If used with any invalid mode (like "invalidmode") it will only save these instances.
-  - Default: {}
-- IgnoreProperties: `table`
-  - Ignores properties by Name.
-  - Default: {}
-- SaveCacheInterval: `number`
-  - The less the value the more often it saves, but that would mean less performance due to constantly saving.
-  - Default: 0x1600 * 10
-- FilePath: `string`
-  - Must only contain the name of the file, no file extension.
-  - EX: FilePath = "Place" not "Place.rbxlx"
-  - Aliases: FileName
-  - Default: false
-- Object: `Instance`
-  - If provided, saves as .rbxmx (Model file) instead. If Object is game, it will be saved as a .rbxl file. MUST BE AN INSTANCE REFERENCE, FOR EXAMPLE - game.Workspace. "optimized" mode is NOT supported with this option. If IsModel is set to false then Object specified here will be saved as a place file.
-  - Default: false
-- IsModel: `boolean`
-  - Saves the file as a model (.rbxmx).
-  - If Object is specified then sets to true automatically, unless you set it to false.
-  - Default: false
-- NilInstances: `boolean`
-  - Save instances that aren't parented (parented to nil) in the folder game["Nil Instances"]
-  - Enables SaveNotCreatable
-  - Default: false
-- NilInstancesFixes: `{[Instance.ClassName]=function}`
-  - This can cause some Classes to be fixed even though they might not need the fix (better be safe than sorry though). For example, Bones inherit from Attachment if we don't define them in the NilInstancesFixes then this will catch them anyways. TO AVOID THIS BEHAVIOR USE THIS EXAMPLE: {ClassName_That_Doesnt_Need_Fix = false}.
-  - Default: {Animator = function, AdPortal = function, Attachment = function, BaseWrap = function, PackageLink = function}
-- IgnoreDefaultProperties: `boolean`
-  - Ignores default properties during saving.
-  - Aliases: IgnoreDefaultProps
-  - Default: true
-- IgnoreNotArchivable: `boolean`
-  - Ignores the Archivable property and saves Non-Archivable instances.
-  - Aliases: IgnoreArchivable 
-  - Default: true
-- IgnorePropertiesOfNotScriptsOnScriptsMode: `boolean`
-  - Ignores properties of every instance that is not a script in "scripts" mode.
-  - Default: false
-- IgnoreSpecialProperties: `boolean`
-  - Prevents calls to gethiddenproperty and uses fallback methods instead. This also helps with crashes. If your file is corrupted after saving, you can try turning this on.
-  - Default: false (except on the executors Xeno (includes JJSploit) and Solara)
-- IsolateLocalPlayer: `boolean`
-  - Saves Children of LocalPlayer as separate folder and prevents any instance of ClassName Player with .Name identical to LocalPlayer.Name from saving.
-  - Enables SaveNotCreatable
-  - Aliases: IsolatePlayerGui
-  - Default: false
-- IsolateStarterPlayer: `boolean`
-  - If enabled, StarterPlayer will be cleared and the saved starter player will be placed into folders.
-  - Default: false
-- IsolateLocalPlayerCharacter: `boolean`
-  - Saves Children of LocalPlayer.Character as separate folder, and prevents the character from saving in workspace.
-  - Enables SaveNotCreatable
-  - Default: false
-- RemovePlayerCharacters: `boolean`
-  - Ignore player characters while saving.
-  - Enables SaveNotCreatable automatically
-  - Aliases: SavePlayerCharacters (inverse, takes priority)
-  - Default: true
-- SaveNotCreatable: `boolean`
-  - Includes non-serializable instances as Folder objects (Name is misleading as this is mostly a fix for certain NilInstances and isn't always related to NotCreatable).
-  - The instances this is applied to is controlled by NotCreatableFixes
-  - Default: false
-- NotCreatableFixes: `table<Instance.ClassName>`
-  - The instances to convert using SaveNotCreatable
-  - {"Player"} is the same as {Player = "Folder"}; Format like {SpawnLocation = "Part"} is only to be used when SpawnLocation inherits from "Part" AND "Part" is Creatable.
-  - Default: {["CloudLocalizationTable"] = "LocalizationTable", ["InputObject"] = "Folder", ["LodDataEntity"] = "Folder", ["LodDataService"] = "Folder",["Translator"] = "Folder", ["TextChatMessage"] = "Folder", [""] = "Folder", ["AnimationTrack"] = "Folder", ["Player"] = "Folder", ["PlayerGui"] = "Folder", ["PlayerScripts"] = "Folder", ["PlayerMouse"] = "Folder", ["ScreenshotHud"] = "Folder", ["StudioData"] = "Folder", ["TextSource"] = "Folder", ["TouchTransmitter"] = "Folder", ["Dragger"] = "Folder", ["AdvancedDragger"] = "Folder"}
- - SavePropsAsAttributesForNotCreatableFixes
-   - Converts CanSave/CanLoad properties of instances with a NotCreatableFix which can't be saved otherwise into attributes.
-   - Enables SaveNotCreatable
-   - Doesn't save properties when they are already saved normally. (Ex: In the spawnlocation example above, only properties that only apply to the spawnlocation, not the part will be saved)
-   - Attribute Name Format: Same as SaveAsAttributes but with the prefix `__NotCreatableFix_`.
-   - Default: false
-- IsolatePlayers: `boolean`
-  - Saves players in a seperate folder.
-  - Enables SaveNotCreatable
-  - Aliases: SavePlayers, RemovePlayers (inverse, takes priority)
-  - Default: false
-- AlternativeWritefile: `boolean`
-  - Splits file content string into segments and writes them using appendfile. This might help with crashes when it starts writing to file. Though there is a risk of appendfile working incorrectly on some executors.
-  - Default: true (except on the executors JJSploit, Xeno, Zorara)
-- IgnoreDefaultPlayerScripts: `boolean`
-  - Ignores Default PlayerScripts like PlayerModule & RbxCharacterSounds. Prevents crashes on certain Executors.
-  - Default: true
-- IgnoreSharedStrings: `boolean`
-  - Prevents the value type "SharedString" from saving. Prevents Crashes on some executors.
-  - Default: true (except on the executors Wave, Zenith, Swift, Potassium, Volcano, Velocity, Codex, and Nihon, as they are confirmed to support sharedstrings.)
-- SharedStringOverwrite: `boolean`
-  - SharedStrings can also be used for ValueTypes that aren't SharedString, this behavior is not documented anywhere but makes sense (Could create issues though, due to potential ValueType mix-up, only works on certain types which are all base64 encoded so far).
-  - Reason: Allows for potential smaller file size (can also be bigger in some cases).
-  - Default: false
-- IgnoreSpecialStrings: `boolean`
-  - Prevents special properties with the type "string" from being read by gethiddenproperty. Prevents crashes on some executors.
-  - Default: false (except on the executor Velocity)
-- IgnoreSpecialClassProperties: `boolean`
-  - Prevents special properties with the category "Class" (Properties with instance values) from being read by gethiddenproperty. Prevents crashes on some executors
-  - Default: false (except on the executor Velocity)
-- TreatUnionsAsParts: `boolean`
-  - Converts all UnionOperations to Parts. Useful if your Executor isn't able to save (read) Unions, because otherwise they will be invisible.
-  - Default: false (except on Solara, Xeno, and JJSploit)
-# Function Documentation
-- SynSaveInstance.saveinstance(
-  - Yields
-  - Parameter_1: `variant<table,table<Instance>>`
-    - Can either be SynSaveInstance.CustomOptions table or a filled with instances ({Instance}).
-    - If it is filled with instances, then it will be treated as ExtraInstances with an invalid mode and IsModel will be true.
-  - Parameter_2: `table`
-    - Optional
-    - If present, then Parameter_2 will be assumed to be SynSaveInstance.CustomOptions table.
-    - If Parameter_1 is an Instance, then it will be assumed to be SynSaveInstance.CustomOptions table.Object.
-    - If Parameter_1 is a table filled with instances ({Instance}), then it will be assumed to be SynSaveInstance.CustomOptions table.ExtraInstances and IsModel will be true
-    - This exists for sake compatibility with saveinstance(game, {})
-- ) �?? ()
+    @class SynSaveInstance
+    Represents the options for saving instances with custom settings using the synsaveinstance function.
+]=]
+
+--- @interface CustomOptions table
+--- * Structure of the main CustomOptions table.
+--- * Note: Options are case-insensitive, meaning you could type `NilInstances` option as `nilInStaNces` and it would still be valid.
+--- @within SynSaveInstance
+--- @field __DEBUG_MODE boolean -- This will print debug logs to console about unusual scenarios. Recommended to enable if you wish to help us improve our products and find bugs / issues with it! ___Default:___ false
+--- @field ReadMe boolean --___Default:___ true
+--- @field SafeMode boolean -- Kicks you before Saving, which prevents you from being detected in any game. ___Default:___ false
+--- @field ShutdownWhenDone boolean -- Shuts the game down after saveinstance is finished. ___Default:___ false
+--- @field AntiIdle boolean -- Prevents the 20-minute-Idle Kick. ___Default:___ true
+--- .Anonymous {boolean|table{UserId = string, Name = string}} -- * **RISKY:** Cleans the file of any info related to your account like: Name, UserId. This is useful for some games that might store that info in GUIs or other Instances. Might potentially mess up parts of strings that contain characters that match your Name or parts of numbers that match your UserId. Can also be a table with UserId & Name keys. ___Default:___ false
+--- @field ShowStatus boolean -- ___Default:___ true
+--- @field Callback function -- If set, the serialized data will be sent to the callback function instead of to file. ___Default:___ false
+--- @field mode string -- Valid modes: full, optimized, scripts. Change this to invalid mode like "invalid" if you only want ExtraInstances. "optimized" mode is **NOT** supported with *@Object* option. ___Default:___ `"optimized"`
+--- @field noscripts boolean -- ___Aliases:___ `Decompile`. ___Default:___ false
+--- @field scriptcache boolean -- ___Default:___ true
+--- @field decomptype string -- * Deprecated. ___Default:___ Uses your executor's decompiler, if available.
+--- @field timeout number -- If the decompilation run time exceeds this value it gets cancelled. Set to -1 to disable timeout (unreliable). ***Aliases***: `DecompileTimeout`. ___Default:___ 10
+--- @field DecompileJobless boolean -- Includes already decompiled code in the output. No new scripts are decompiled. ___Default:___ false
+--- @field SaveBytecode boolean -- Includes bytecode in the output. Useful if you wish to be able to decompile it yourself later. ___Default:___ false
+--- .DecompileIgnore {Instance | Instance.ClassName | [Instance.ClassName] = {Instance.Name}} -- * Ignores match & it's descendants by default. To Ignore only the instance itself set the value to `= false`. Examples: "Chat", - Matches any instance with "Chat" ClassName, Players = {"MyPlayerName"} - Matches "Players" Class AND "MyPlayerName" Name ONLY, `workspace` - matches Instance by reference, `[workspace] = false` - matches Instance by reference and only ignores the instance itself and not it's descendants. ___Default:___ {TextChatService}
+--- .IgnoreList {Instance | Instance.ClassName | [Instance.ClassName] = {Instance.Name}} -- Structure is similar to **@DecompileIgnore** except `= false` meaning if you ignore one instance it will automatically ignore it's descendants. ___Default:___ {CoreGui, CorePackages}
+--- .ExtraInstances {Instance} -- If used with any invalid mode (like "invalidmode") it will only save these instances. ___Default:___ {}
+--- @field IgnoreProperties table -- Ignores properties by Name. ___Default:___ {}
+--- @field SaveCacheInterval number -- The less the value the more often it saves, but that would mean less performance due to constantly saving. ___Default:___ 0x1600 * 10
+--- @field FilePath string -- Must only contain the name of the file, no file extension. ___Default:___ false
+--- @field Object Instance -- * If provided, saves as .rbxmx (Model file) instead. If Object is game, it will be saved as a .rbxl file. **MUST BE AN INSTANCE REFERENCE, FOR EXAMPLE - *game.Workspace***. `"optimized"` mode is **NOT** supported with this option. If IsModel is set to false then Object specified here will be saved as a place file. ___Default:___ false
+--- @field IsModel boolean -- If Object is specified then sets to true automatically, unless you set it to false. ___Default:___ false
+--- @field NilInstances boolean -- Save instances that aren't Parented (Parented to nil). ___Default:___ false
+--- .NilInstancesFixes {[Instance.ClassName] = function} -- * This can cause some Classes to be fixed even though they might not need the fix (better be safe than sorry though). For example, Bones inherit from Attachment if we dont define them in the NilInstancesFixes then this will catch them anyways. **TO AVOID THIS BEHAVIOR USE THIS EXAMPLE:** {ClassName_That_Doesnt_Need_Fix = false}. ___Default:___ {Animator = function, AdPortal = function, BaseWrap = function, Attachment = function}
+--- @field IgnoreDefaultProperties boolean -- Ignores default properties during saving.  ___Default:___ true
+--- @field IgnoreNotArchivable boolean -- Ignores the Archivable property and saves Non-Archivable instances. ___Default:___ true
+--- @field IgnorePropertiesOfNotScriptsOnScriptsMode boolean -- Ignores property of every instance that is not a script in "scripts" mode. ___Default:___ false
+--- @field IgnoreSpecialProperties boolean -- Prevents calls to `gethiddenproperty` and uses fallback methods instead. This also helps with crashes. If your file is corrupted after saving, you can try turning this on. ___Default:___ false
+--- @field IsolateLocalPlayer boolean -- Saves Children of LocalPlayer as separate folder and prevents any instance of ClassName Player with .Name identical to LocalPlayer.Name from saving. ___Default:___ false
+--- @field IsolateStarterPlayer boolean -- If enabled, StarterPlayer will be cleared and the saved starter player will be placed into folders. ___Default:___ false
+--- @field IsolateLocalPlayerCharacter boolean -- Saves Children of LocalPlayer.Character as separate folder and prevents any instance of ClassName Player with .Name identical to LocalPlayer.Name from saving. ___Default:___ false
+--- @field RemovePlayerCharacters boolean -- Ignore player characters while saving. (Enables SaveNotCreatable automatically). ___Default:___ true
+--- @field SaveNotCreatable boolean -- * Includes non-serializable instances as Folder objects (Name is misleading as this is mostly a fix for certain NilInstances and isn't always related to NotCreatable). ___Default:___ false
+--- .NotCreatableFixes table<Instance.ClassName> -- * {"Player"} is the same as {Player = "Folder"}; Format like {SpawnLocation = "Part"} is only to be used when SpawnLocation inherits from "Part" AND "Part" is Creatable. ___Default:___ { "", "Player", "PlayerScripts", "PlayerGui", "TouchTransmitter" }
+--- @field IsolatePlayers boolean -- * This option does save players, it's just they won't show up in Studio and can only be viewed through the place file code (in text editor). More info at https://github.com/luau/UniversalSynSaveInstance/issues/2. ___Default:___ false
+--- @field AlternativeWritefile boolean -- * Splits file content string into segments and writes them using appendfile. This might help with crashes when it starts writing to file. Though there is a risk of appendfile working incorrectly on some executors. ___Default:___ true
+--- @field IgnoreDefaultPlayerScripts boolean -- * **RISKY: Ignores Default PlayerScripts like PlayerModule & RbxCharacterSounds. Prevents crashes on certain Executors. ___Default:___ true
+--- @field IgnoreSharedStrings boolean -- * **RISKY: FIXES CRASHES (TEMPORARY, TESTED ON ROEXEC ONLY). FEEL FREE TO DISABLE THIS TO SEE IF IT WORKS FOR YOU**. ___Default:___ true
+--- @field SharedStringOverwrite boolean -- * **RISKY:** if the process is not finished aka crashed then none of the affected values will be available. SharedStrings can also be used for ValueTypes that aren't `SharedString`, this behavior is not documented anywhere but makes sense (Could create issues though, due to _potential_ ValueType mix-up, only works on certain types which are all base64 encoded so far). Reason: Allows for potential smaller file size (can also be bigger in some cases). ___Default:___ false
+--- @field TreatUnionsAsParts boolean -- * **RISKY:** Converts all UnionOperations to Parts. Useful if your Executor isn't able to save (read) Unions, because otherwise they will be invisible. ___Default:___ false (except Solara)
+
+--- @interface OptionsAliases
+--- @within SynSaveInstance
+--- Aliases for the [SynSaveInstance.CustomOptions table]. Format: {Option -- Alias1, Alias2}
+--- @field FilePath string -- FileName
+--- @field IgnoreDefaultProperties string -- IgnoreDefaultProps
+--- @field SaveNotCreatable string -- SaveNonCreatable
+--- @field InstancesBlacklist string -- IgnoreList
+--- @field IsolatePlayerGui string -- IsolateLocalPlayer
+--- @field IsolatePlayers string -- SavePlayers
+--- @field scriptcache string -- DecompileJobless
+--- @field timeout string -- DecompileTimeout
+--- @field IgnoreNotArchivable string -- IgnoreArchivable
+--- @field RemovePlayerCharacters string -- INVERSE SavePlayerCharacters
+
+--[=[
+	@function saveinstance
+	Saves instances with specified options. Example:
+	```lua
+	local Params = {
+		RepoURL = "https://raw.githubusercontent.com/Team-Gauntlet/TopazSaveinstance/main/",
+		SSI = "saveinstance",
+	}
+
+	local synsaveinstance = loadstring(game:HttpGet(Params.RepoURL .. Params.SSI .. ".luau", true), Params.SSI)()
+
+	local CustomOptions = { SafeMode = true, timeout = 15, SaveBytecode = true }
+
+	synsaveinstance(CustomOptions)
+	```
+	@within SynSaveInstance
+	@yields
+	@param Parameter_1 variant<table, table<Instance>> -- Can either be [SynSaveInstance.CustomOptions table] or a filled with instances ({Instance}), (then it will be treated as ExtraInstances with an invalid mode and IsModel will be true).
+	@param Parameter_2 table -- [OPTIONAL] If present, then Parameter_2 will be assumed to be [SynSaveInstance.CustomOptions table]. And then if the Parameter_1 is an Instance, then it will be assumed to be [SynSaveInstance.CustomOptions table].Object. If Parameter_1 is a table filled with instances ({Instance}), then it will be assumed to be [SynSaveInstance.CustomOptions table].ExtraInstances and IsModel will be true). This exists for sake compatibility with `saveinstance(game, {})`
 ]=]
 
 local function synsaveinstance(CustomOptions, CustomOptions2)
@@ -2258,6 +2337,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		IsModel = false,
 
 		IgnoreDefaultProperties = true,
+		InstancesBlacklist = "IgnoreList",
+		IsolatePlayerGui = "IsolateLocalPlayer",
 		IgnoreNotArchivable = true,
 		IgnorePropertiesOfNotScriptsOnScriptsMode = false,
 		IgnoreSpecialProperties = ArrayToDict({"Xeno", "Solara"})[EXECUTOR_NAME] or false, -- ! Please submit more Executors that crash on gethiddenproperty (with this disabled basically). Xeno (also JJSploit, which uses Xeno's api and has the same identifyexecutor() as Xeno) is because gethiddenproperty returns 0 when it can't read a property instead of failing. Solara's gethiddenproperty is just slow.
@@ -3459,7 +3540,7 @@ end
 					if ok then
 						raw = result
 					else
-						Property.Fallback = nil
+					Property.Fallback = nil -- Low level execs might fail due to lack of some Capabilities
 						if __DEBUG_MODE then
 							__DEBUG_MODE("Fix Failed", result, PropertyName)
 						end

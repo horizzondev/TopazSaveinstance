@@ -18,14 +18,10 @@ def import_dump_utils():
             if common_path not in sys.path:
                 sys.path.append(common_path)
             try:
-                from dump_utils import (
-                    write_dump_file,
-                    get_api_response,
-                    array_to_dictionary,
-                )
+                from dump_utils import write_dump_file, get_api_response
 
                 print(f"Found dump_utils at: {common_path}")
-                return write_dump_file, get_api_response, array_to_dictionary
+                return write_dump_file, get_api_response
             except ImportError as e:
                 print(f"Failed to import from {common_path}: {e}")
                 break
@@ -39,56 +35,44 @@ def import_dump_utils():
 
 
 # Import utilities
-write_dump_file, get_api_response, array_to_dictionary = import_dump_utils()
+write_dump_file, get_api_response = import_dump_utils()
 
 
 def fetch_api(version_hash=None):
     response, version_hash = get_api_response(version_hash)
     api_classes = response.json()["Classes"]
 
-    s = version_hash + "\n\n"
-    class_list = {}
+    output = version_hash + "\n\n"
 
     for api_class in api_classes:
         class_name = api_class["Name"]
-        class_tags = api_class.get("Tags")
+        class_members = api_class["Members"]
+        prev_len = len(output)
 
-        if class_tags:
-            class_tags = array_to_dictionary(class_tags)
-        else:
-            print(class_name, "notags")
+        for member in class_members:
+            member_name = member["Name"]
+            member_type = member["MemberType"]
 
-        class_info = {
-            "Tags": class_tags,
-            "Superclass": api_class["Superclass"],
-            "Properties": {},
-        }
+            if member_type == "Property":
+                serialization = member["Serialization"]
+                value_type = member["ValueType"]["Name"]
 
-        prev_len = len(s)
+                # Check if ValueType is "Content" and both CanSave and CanLoad are true
+                if (
+                    value_type == "Content"
+                    and serialization["CanLoad"]
+                    and serialization["CanSave"]
+                ):
+                    output += f"{class_name}.{member_name}\n"
 
-        if (
-            class_tags
-            and class_tags.get("NotCreatable")
-            and not class_tags.get("Service")
-            and not "Base" in class_name
-            and not "Page" in class_name
-            and not "Plugin" in class_name
-            and not "Setting" in class_name
-        ):
-            s += f"{class_name}\n"
+        if len(output) != prev_len:
+            output += "\n"
 
-        if len(s) != prev_len:
-            s += "\n"
-
-        class_list[class_name] = class_info
-
-    return s
+    return output
 
 
 if __name__ == "__main__":
-    # Check if version hash was passed as a command line argument
     version_hash = sys.argv[1] if len(sys.argv) > 1 else None
-
     try:
         content = fetch_api(version_hash)
         print(content)
