@@ -3373,7 +3373,7 @@ end
 			end
 		else
 			ldecompile = function(script)
-				local output = "-- Your Executor does NOT have a Decompiler"
+				local output = "-- Your Executor does not have a decompiler"
 				if OPTIONS.SaveBytecodeIfDecompilerFails and SaveBytecode then
 					local bc = SaveBytecode(script)
 					if bc then
