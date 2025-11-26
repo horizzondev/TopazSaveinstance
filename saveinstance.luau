@@ -2948,12 +2948,6 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 
 	local getbytecode
 
-local function timcheese(code)
-	--// the FINAL function.. 
-	--// this will be used to fully repair the code
-	--// js dont edit this yet cuz I've got plans for it
-end
-
 --// this uses the rescripted code to fix alot of issues with it
 --// example: l_v3_SpeedMultiplier_0 --> SpeedMultiplier
 local function lookgreat(code)
@@ -2963,6 +2957,7 @@ local function lookgreat(code)
 	end
 
 	local success, result = pcall(function()
+        --// my fucking 5 key broke THERES TOO MANY PRECENTS
 		code = string.gsub(code, "%f[%w_]l_v%d+_([%w_]+)_%d+%f[^%w_]", "%1")
 		code = string.gsub(code, "%f[%w_]l_([%w_]+)_%d+%f[^%w_]", "%1")
 		code = string.gsub(code, "%f[%w_]v%d+_([%w_]+)%f[^%w_]", "%1")
@@ -2972,17 +2967,221 @@ local function lookgreat(code)
 		code = string.gsub(code, "%f[%w_]i%d+_([%w_]+)%f[^%w_]", "%1")
 		code = string.gsub(code, "%f[%w_]a%d+_([%w_]+)%f[^%w_]", "%1")
 		code = string.gsub(code, "%f[%w_]f%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, ";(%s*\n)", ",%1")
+		code = string.gsub(code, ";(%s*})", ",%1") 
+		code = string.gsub(code, ";(%s*$)", ",%1") 
+		code = string.gsub(code, ";(%s*\n)", "\n") 
+		local returnPattern = "^%s*return%s+{(.-)}\n*$"
+		if string.match(code, returnPattern) then
+			if string.match(code, "DisplayName") or string.match(code, "Animations") or 
+			   string.match(code, "Description") or string.match(code, "Price") or
+			   string.match(code, "Icon") or string.match(code, "Damage") or
+			   string.match(code, "Config") then
+				code = string.gsub(code, "^(%s*)return%s+", "%1local Config = ")
+				if not string.match(code, "\nreturn Config") then
+					code = code .. "\n\nreturn Config"
+				end
+			end
+		end
+		
+		code = string.gsub(code, '%%%*', '%%s') 
+		code = string.gsub(code, ",([^%s\n])", ", %1")
+		code = string.gsub(code, "(%w)=([^=])", "%1 = %2")
+		code = string.gsub(code, "([^=<>~!])=(%w)", "%1= %2")
+		code = string.gsub(code, "(%d)%+(%d)", "%1 + %2")
+		code = string.gsub(code, "(%d)%-(%d)", "%1 - %2")
+		code = string.gsub(code, "(%d)%*(%d)", "%1 * %2")
+		code = string.gsub(code, "(%d)/(%d)", "%1 / %2")
+		code = string.gsub(code, "\n(%s*)local%s+function%s+", "\n\n%1local function ")
+		code = string.gsub(code, "\n(%s*)function%s+", "\n\n%1function ")
+		code = string.gsub(code, "\n(if%s+)", "\n\n%1")
+		code = string.gsub(code, "\n(for%s+)", "\n\n%1")
+		code = string.gsub(code, "\n(while%s+)", "\n\n%1")
+		code = string.gsub(code, "(end)(\n%s*[^%s])", "%1\n\n%2") --// dude its fucking 1:42 am let me sleep
+		code = string.gsub(code, "([^%s])%-%-", "%1 --") 
+		code = string.gsub(code, "%)then", ") then")
+		code = string.gsub(code, "(%w)then", "%1 then")
+		code = string.gsub(code, "%)do", ") do")
+		code = string.gsub(code, "(%w)do([%s\n])", "%1 do%2")
+		code = string.gsub(code, ":(%w+)%s+%(", ":%1(")
+		code = string.gsub(code, "%.(%w+)%s+%(", ".%1(")
+		code = string.gsub(code, "function%s+([%w_]+)%s+%(", "function %1(")
+		code = string.gsub(code, "(\n%s*)return%s*\n%s*end", "%1return\n%1end")
+		code = string.gsub(code, "elseif%(", "elseif (")
+		code = string.gsub(code, "if%(", "if (")
+		code = string.gsub(code, "while%(", "while (")
+		code = string.gsub(code, "return\n%s*else", "return\nelse")
+		code = string.gsub(code, "\n\n\n+", "\n\n")
+		code = string.gsub(code, "[ \t]+\n", "\n")
+		code = string.gsub(code, "[ \t]+$", "")
+		code = string.gsub(code, "^%s*\n+", "")
+		code = string.gsub(code, "%s*$", "\n")
+		code = string.gsub(code, "{%s+}", "{}")
+		code = string.gsub(code, "=%s+{%s*}", " = {}")
+		code = string.gsub(code, "%(  +", "(")
+		code = string.gsub(code, "  +%)", ")")
+		code = string.gsub(code, "1e999", "math.huge")
+		code = string.gsub(code, "task%.delay%s*%(", "task.delay(")
+		code = string.gsub(code, "task%.spawn%s*%(", "task.spawn(")
+		code = string.gsub(code, "task%.wait%s*%(", "task.wait(")
+		return code
+	end)
+	
+	if not success then
+		print("decomp failed during lookgreat")
+		return code
+	end
+	return timcheese(result) or result or code
+end
+
+--// fixes a TON of issues that even johnpork, rescriptcode, and lookgreat dont fix.
+local function timcheese(code)
+	if not code or type(code) ~= "string" or #code < 10 then
+		return code
+	end
+
+	local success, result = pcall(function()
+		code = string.gsub(code, "CFrame%.new%s*%(([%d%.%-]+,%s*[%d%.%-]+,%s*[%d%.%-]+),%s*([%d%.%-]+,%s*[%d%.%-]+,%s*[%d%.%-]+,%s*[%d%.%-]+,%s*[%d%.%-]+,%s*[%d%.%-]+,%s*[%d%.%-]+,%s*[%d%.%-]+,%s*[%d%.%-]+)%)", 
+			function(pos, matrix)
+				return "CFrame.new(" .. pos .. ", " .. matrix .. ")"
+			end)
+		
+		code = string.gsub(code, "3%.1415926535897[%d]*", "math.pi")
+		
+		code = string.gsub(code, "Random%.new%(%):", "Random.new():")
+		
+		code = string.gsub(code, "return%s*\n%s*else%s*\n%s*if", "elseif")
+		
+		code = string.gsub(code, "else%s*\n%s*if%s+[^\n]+then%s*\n%s*return%s*\n%s*end%s*\n%s*return", 
+			function(match)
+				return string.gsub(match, "else%s*\n%s*if", "elseif")
+			end)
+		
+		code = string.gsub(code, "return%s*\n%s*end%s*\n%s*return", "return\n%1end")
+		
+		code = string.gsub(code, "(local%s+[%w_]+%s*=%s*0)%s*\n%s*(local%s+[%w_]+%s*=%s*0)", 
+			function(first, second)
+				local var1 = string.match(first, "local%s+([%w_]+)")
+				local var2 = string.match(second, "local%s+([%w_]+)")
+				if var1 and var2 then
+					return "local " .. var1 .. ", " .. var2 .. " = 0, 0"
+				end
+				return first .. "\n" .. second
+			end)
+		
+		local services = {
+			"RunService", "TweenService", "Debris", "Players", "Workspace",
+			"Lighting", "ReplicatedStorage", "ServerStorage", "SoundService"
+		}
+		
+		for _, service in ipairs(services) do
+			code = string.gsub(code, "game%." .. service .. "([^%w_])", 
+				"game:GetService('" .. service .. "')%1")
+			
+			code = string.gsub(code, 'game%[["\']+' .. service .. '["\']+%]', 
+				"game:GetService('" .. service .. "')")
+		end
+		
+		code = string.gsub(code, '%%s([^"\'%)]+)%%s', '%%s%1%%s')
+		
+		code = string.gsub(code, 'tostring%(tostring%(([^%)]+)%)%)', 'tostring(%1)')
+		
+		code = string.gsub(code, "(%d+)%.0+([^%d])", "%1%2")
+		
+		code = string.gsub(code, ",%s*\n%s*}", "\n}")
+		
+		code = string.gsub(code, "{%s*\n%s*}", "{}")
+		
+		code = string.gsub(code, "function%s*%(([^%)]+)%)local", "function(%1)\nlocal")
+		
+		code = string.gsub(code, "function%s*%(([^%)]+)%)([^%s\n])", "function(%1)\n%2")
+		
+		code = string.gsub(code, "do%s*\n%s*local%s+([%w_]+,%s*[%w_]+,%s*[%w_]+)%s*=%s*([^\n]+)%s*\n",
+			function(vars, values)
+				return "do\n\tlocal " .. vars .. " = " .. values .. "\n"
+			end)
+		
+		code = string.gsub(code, 'print%s*%(%s*["\']Debug["\'][^%)]*%)', "")
+		
+		code = string.gsub(code, "if%s+%(", "if (")
+		code = string.gsub(code, "%)%s+then", ") then")
+		
+		code = string.gsub(code, "for%s+([%w_]+)%s*,%s*([%w_]+)%s+in", "for %1, %2 in")
+		
+		code = string.gsub(code, "task%.([%w_]+)%s*%(", "task.%1(")
+		
+		code = string.gsub(code, "\n\n\n+", "\n\n")
+		
+		code = string.gsub(code, "[ \t]+\n", "\n")
+		code = string.gsub(code, "[ \t]+$", "")
+		
+		code = code:gsub("%s*$", "\n")
+		
+		code = string.gsub(code, "not%s*%(([%w_%.]+)%s*==%s*([^%)]+)%)", "%1 ~= %2")
+		code = string.gsub(code, "not%s*%(([%w_%.]+)%s*~=%s*([^%)]+)%)", "%1 == %2")
+		
+		code = string.gsub(code, 'type%(([^%)]+)%)', 'typeof(%1)')
+		
+		code = string.gsub(code, "Vector3%.new%(0,%s*0,%s*0%)", "Vector3.zero")
+		code = string.gsub(code, "Vector3%.new%(1,%s*1,%s*1%)", "Vector3.one")
+		
+		code = string.gsub(code, "UDim2%.new%(0,%s*0,%s*0,%s*0%)", "UDim2.new()")
+		
+		code = string.gsub(code, "Color3%.new%((%d+)/255,%s*(%d+)/255,%s*(%d+)/255%)", "Color3.fromRGB(%1, %2, %3)")
+		
+		code = string.gsub(code, "if%s+([%w_%.]+)%s*==%s*true%s+then", "if %1 then")
+		code = string.gsub(code, "if%s+([%w_%.]+)%s*==%s*false%s+then", "if not %1 then")
+		code = string.gsub(code, "if%s+([%w_%.]+)%s*~=%s*false%s+then", "if %1 then")
+		code = string.gsub(code, "if%s+([%w_%.]+)%s*~=%s*true%s+then", "if not %1 then")
+		
+		code = string.gsub(code, "while%s+true%s+do", "while true do")
+		code = string.gsub(code, "repeat%s*\n%s*until%s+false", "while true do\nend")
+		
+		code = string.gsub(code, "and%s+true", "")
+		code = string.gsub(code, "or%s+false", "")
+		code = string.gsub(code, "true%s+and", "")
+		code = string.gsub(code, "false%s+or", "")
+		
+		code = string.gsub(code, "string%.len%(([^%)]+)%)", "#%1")
+		code = string.gsub(code, "table%.getn%(([^%)]+)%)", "#%1")
+		
+		code = string.gsub(code, "math%.floor%(([^%)]+)%s*/%s*1%)", "math.floor(%1)")
+		code = string.gsub(code, "math%.ceil%(([^%)]+)%s*/%s*1%)", "math.ceil(%1)")
+		
+		code = string.gsub(code, "%(%(([^%)]+)%)%)", "(%1)")
+		
+		code = string.gsub(code, 'string%.char%((%d+)%)%.%.string%.char%((%d+)%)', 'string.char(%1, %2)')
+		
+		code = string.gsub(code, "Instance%.new%(([^%)]+)%)%.Parent%s*=%s*([^\n]+)", "Instance.new(%1, %2)")
+		
+		code = string.gsub(code, "wait%(0%.(%d+)%)", "task.wait(0.%1)")
+		code = string.gsub(code, "wait%((%d+)%)", "task.wait(%1)")
+		code = string.gsub(code, "spawn%(", "task.spawn(")
+		
+		code = string.gsub(code, "NumberSequence%.new%(([^,%)]+),%s*%1%)", "NumberSequence.new(%1)")
+		code = string.gsub(code, "ColorSequence%.new%(([^,%)]+),%s*%1%)", "ColorSequence.new(%1)")
+		
+		code = string.gsub(code, "%.%.%s*\"\"", "")
+		code = string.gsub(code, "\"\"%s*%.%.", "")
+		code = string.gsub(code, "\"\"%.%.([%w_%.]+)%.%.\"\"", "%1")
+		
+		code = string.gsub(code, "([%w_%.]+)%s*%+%s*0([^%d])", "%1%2")
+		code = string.gsub(code, "([%w_%.]+)%s*%-%s*0([^%d])", "%1%2")
+		code = string.gsub(code, "([%w_%.]+)%s*%*%s*1([^%d])", "%1%2")
+		code = string.gsub(code, "([%w_%.]+)%s*/%s*1([^%d])", "%1%2")
 		
 		return code
 	end)
 
 	if not success then
+		print("decomp failed during tim cheese")
 		return code
 	end
-
+	
 	return result
 end
 
+--// rescripts the fucking bad johnporked code.
 local function rescriptcode(code, skipIndent)
 	if not code or type(code) ~= "string" or #code < 10 then
 		return code
@@ -2999,6 +3198,17 @@ local function rescriptcode(code, skipIndent)
 			SoundService = true, Chat = true, TextChatService = true, RunService = true,
 			TweenService = true, UserInputService = true, HttpService = true, Debris = true
 		}
+		local robloxTypes = {
+			CFrame = "cframe", Vector3 = "position", Vector2 = "vector2",
+			Color3 = "color", BrickColor = "brickColor", UDim2 = "udim",
+			TweenInfo = "tweenInfo", NumberSequence = "numSequence",
+			ColorSequence = "colorSequence", Sound = "sound",
+			Humanoid = "humanoid", Model = "model", Part = "part",
+			ParticleEmitter = "emitter", Beam = "beam", Trail = "trail",
+			Animation = "animation", Animator = "animator",
+			RemoteEvent = "remoteEvent", RemoteFunction = "remoteFunction",
+			BindableEvent = "bindableEvent", BindableFunction = "bindableFunction"
+		}
 
 		local function getUniqueName(base)
 			if not usedNames[base] then
@@ -3012,7 +3222,6 @@ local function rescriptcode(code, skipIndent)
 			usedNames[base .. counter] = true
 			return base .. counter
 		end
-
 		for param in string.gmatch(code, "Callback%s*=%s*function%s*%(([%w_]+)") do
 			if string.match(param, "^[av]%d+$") then
 				varMapping[param] = "self"
@@ -3023,17 +3232,46 @@ local function rescriptcode(code, skipIndent)
 				varMapping[param] = "self"
 			end
 		end
-
+		for param1, param2, param3, param4 in string.gmatch(code, "=%s*function%s*%(([%w_]+),?%s*([%w_]*)%s*,?%s*([%w_]*)%s*,?%s*([%w_]*)%)") do
+			if string.match(param1, "^[kv]%d+$") and not varMapping[param1] then
+				varMapping[param1] = getUniqueName("key")
+			end
+			if param2 ~= "" and string.match(param2, "^v%d+$") and not varMapping[param2] then
+				varMapping[param2] = getUniqueName("actor")
+			end
+			if param3 ~= "" and string.match(param3, "^v%d+$") and not varMapping[param3] then
+				varMapping[param3] = getUniqueName("param")
+			end
+			if param4 ~= "" and string.match(param4, "^v%d+$") and not varMapping[param4] then
+				varMapping[param4] = getUniqueName("param")
+			end
+		end
 		for varName, firstKey in string.gmatch(code, "local%s+(t%d+)%s*=%s*{%s*([%w_]+)%s*=") do
 			varMapping[varName] = "abilities"
 		end
-
 		for varName in string.gmatch(code, "local%s+(t%d+)%s*=%s*{") do
 			if not varMapping[varName] then
 				varMapping[varName] = getUniqueName("config")
 			end
 		end
-
+		for varName in string.gmatch(code, "local%s+(v%d+)%s*=%s*RaycastParams%.new") do
+			varMapping[varName] = getUniqueName("raycastParams")
+		end
+		for varName in string.gmatch(code, "local%s+(v%d+)%s*=%s*true") do
+			if not varMapping[varName] then
+				varMapping[varName] = getUniqueName("flag")
+			end
+		end
+		for varName in string.gmatch(code, "local%s+(v%d+)%s*=%s*false") do
+			if not varMapping[varName] then
+				varMapping[varName] = getUniqueName("flag")
+			end
+		end
+		for varName in string.gmatch(code, "local%s+(v%d+)%s*=%s*{}") do
+			if not varMapping[varName] then
+				varMapping[varName] = getUniqueName("cache")
+			end
+		end
 		for varName, assignedFrom in string.gmatch(code, "local%s+(v%d+)%s*=%s*([%w_]+)%s*[\n;]") do
 			if not varMapping[varName] then
 				if knownServices[assignedFrom] or varMapping[assignedFrom] then
@@ -3042,19 +3280,16 @@ local function rescriptcode(code, skipIndent)
 				end
 			end
 		end
-
 		for varName, serviceName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*game:GetService%s*%(%s*[\"']([%w_]+)[\"']%s*%)") do
 			if knownServices[serviceName] then
 				varMapping[varName] = getUniqueName(serviceName)
 			end
 		end
-
 		for varName, serviceName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*game%.([%w_]+)") do
 			if knownServices[serviceName] then
 				varMapping[varName] = getUniqueName(serviceName)
 			end
 		end
-
 		for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*require%s*%(") do
 			if varName ~= "_" and not varMapping[varName] then
 				local fullRequire = string.match(code, "local%s+" .. varName .. "%s*=%s*require%s*%([^%)]+%.([%w_]+)%s*%)")
@@ -3063,7 +3298,6 @@ local function rescriptcode(code, skipIndent)
 				end
 			end
 		end
-
 		local firstLine = string.match(code, "^[^\n]+")
 		if firstLine then
 			local moduleVar = string.match(firstLine, "^%s*local%s+([%w_]+)%s*=%s*{")
@@ -3074,33 +3308,55 @@ local function rescriptcode(code, skipIndent)
 				end
 			end
 		end
-
 		for varName, className in string.gmatch(code, "local%s+([%w_]+)%s*=%s*Instance%.new%s*%(%s*[\"']([%w_]+)[\"']%s*%)") do
-			local suggestion = string.lower(string.sub(className, 1, 1)) .. string.sub(className, 2)
+			local suggestion = robloxTypes[className] or (string.lower(string.sub(className, 1, 1)) .. string.sub(className, 2))
 			varMapping[varName] = getUniqueName(suggestion)
 		end
-
+		for varName, constructorType in string.gmatch(code, "local%s+(v%d+)%s*=%s*([%u][%w_]+)%.new%s*%(") do
+			if not varMapping[varName] and robloxTypes[constructorType] then
+				varMapping[varName] = getUniqueName(robloxTypes[constructorType])
+			end
+		end
+		for varName1, varName2 in string.gmatch(code, "local%s+(v%d+),%s*(v%d+)%s*=%s*[%w_]+:GetBoundingBox%s*%(") do
+			if not varMapping[varName1] then
+				varMapping[varName1] = getUniqueName("boundCFrame")
+			end
+			if not varMapping[varName2] then
+				varMapping[varName2] = getUniqueName("boundSize")
+			end
+		end
 		for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+%.Character") do
 			if string.match(varName, "^v%d+$") or string.match(varName, "^l_") then
 				varMapping[varName] = getUniqueName("character")
 			end
 		end
-
 		for varName in string.gmatch(code, "local%s+([%w_]+)%s*=%s*[%w_]+:Clone%s*%(") do
 			if string.match(varName, "^v%d+$") or string.match(varName, "^l_") then
 				varMapping[varName] = getUniqueName("clone")
 			end
 		end
-
+		for varName, childName in string.gmatch(code, "local%s+(v%d+)%s*=%s*[%w_]+:FindFirstChild%s*%(%s*[\"']([%w_]+)[\"']") do
+			if not varMapping[varName] then
+				local suggestion = string.lower(string.sub(childName, 1, 1)) .. string.sub(childName, 2)
+				varMapping[varName] = getUniqueName(suggestion)
+			end
+		end
+		for varName in string.gmatch(code, "local%s+(l_[%w_]+_Children)") do
+			if not varMapping[varName] then
+				local baseName = string.match(varName, "l_([%w_]+)_")
+				if baseName then
+					varMapping[varName] = getUniqueName(string.lower(baseName) .. "Children")
+				end
+			end
+		end
 		for i, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+pairs") do
-			if not varMapping[i] and string.match(i, "^[vk_]") then 
+			if not varMapping[i] and (string.match(i, "^[vk_]") or string.match(i, "^key$")) then 
 				varMapping[i] = "key" 
 			end
 			if not varMapping[v] and string.match(v, "^v%d+$") then 
 				varMapping[v] = "value" 
 			end
 		end
-
 		for i, v in string.gmatch(code, "for%s+([%w_]+),%s*([%w_]+)%s+in%s+ipairs") do
 			if not varMapping[i] and string.match(i, "^[vi_]") then 
 				varMapping[i] = "index" 
@@ -3109,19 +3365,37 @@ local function rescriptcode(code, skipIndent)
 				varMapping[v] = "value" 
 			end
 		end
-
 		for varName in string.gmatch(code, "for%s+([%w_]+)%s*=%s*") do
 			if not varMapping[varName] and (string.match(varName, "^v%d+$") or varName == "_") then
 				varMapping[varName] = "i"
 			end
 		end
-
 		for param1, param2 in string.gmatch(code, "Hit%s*=%s*function%s*%(([%w_]+),?%s*([%w_]*)%)") do
 			if string.match(param1, "^[av]%d+$") and not varMapping[param1] then
 				varMapping[param1] = getUniqueName("target")
 			end
 			if param2 ~= "" and string.match(param2, "^[av]%d+$") and not varMapping[param2] then
 				varMapping[param2] = getUniqueName("didHit")
+			end
+		end
+		for param in string.gmatch(code, "%.Touched:Connect%s*%(%s*function%s*%(([%w_]+)%)") do
+			if string.match(param, "^[av]%d+$") and not varMapping[param] then
+				varMapping[param] = getUniqueName("part")
+			end
+		end
+		for varName, parentSource in string.gmatch(code, "local%s+(v%d+)%s*=%s*([%w_]+)%.Parent") do
+			if not varMapping[varName] then
+				varMapping[varName] = getUniqueName("parent")
+			end
+		end
+		for param in string.gmatch(code, "Heartbeat:Connect%s*%(%s*function%s*%(([%w_]+)%)") do
+			if string.match(param, "^[av]%d+$") and not varMapping[param] then
+				varMapping[param] = getUniqueName("deltaTime")
+			end
+		end
+		for param in string.gmatch(code, "(?:RenderStepped|Stepped):Connect%s*%(%s*function%s*%(([%w_]+)%)") do
+			if string.match(param, "^[av]%d+$") and not varMapping[param] then
+				varMapping[param] = getUniqueName("deltaTime")
 			end
 		end
 		for varName in string.gmatch(code, "local%s+(v%d+)%s*=") do
@@ -3140,57 +3414,19 @@ local function rescriptcode(code, skipIndent)
 			local escapedOld = string.gsub(mapping.old, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
 			code = string.gsub(code, "%f[%w_]" .. escapedOld .. "%f[^%w_]", mapping.new)
 		end
-
+		code = string.gsub(code, "Vector3%.new%s*%(%s*([%d%.%-]+),%s*([%d%.%-]+),%s*([%d%.%-]+),%s*[%d%.%-]+%s*%)", "Vector3.new(%1, %2, %3)")
+		code = string.gsub(code, "Vector2%.new%s*%(%s*([%d%.%-]+),%s*([%d%.%-]+),%s*[%d%.%-]+%s*%)", "Vector2.new(%1, %2)")
+		code = string.gsub(code, "CFrame%.new%s*%(%s*([%d%.%-]+),%s*([%d%.%-]+),%s*([%d%.%-]+),%s*[%d%.%-]+%s*%)", "CFrame.new(%1, %2, %3)")
+		code = string.gsub(code, '%%"%*', '%%*') 
+		code = string.gsub(code, '"%*([^"]*)"', '"%1"') 
 		code = string.gsub(code, 'game%["Run Service"%]', "game:GetService('RunService')")
+		code = string.gsub(code, "game%['Run Service'%]", "game:GetService('RunService')")
 		code = string.gsub(code, 'game%.Debris', "game:GetService('Debris')")
-
-		if not skipIndent then
-			local lines = {}
-			local indentLevel = 0
-			for line in string.gmatch(code .. "\n", "([^\n]*)\n") do
-				local trimmed = string.gsub(line, "^%s+", "")
-				trimmed = string.gsub(trimmed, "%s+$", "")
-
-				if trimmed == "" then
-					table.insert(lines, "")
-				else
-					local shouldUnindent = (string.match(trimmed, "^end%s*$") or 
-						string.match(trimmed, "^end[,;%)%s]") or
-						string.match(trimmed, "^}%s*$") or
-						string.match(trimmed, "^}[,;%)%s]") or
-						string.match(trimmed, "^else%s*$") or
-						string.match(trimmed, "^elseif%s") or
-						string.match(trimmed, "^until%s"))
-
-					if shouldUnindent and indentLevel > 0 then
-						indentLevel = indentLevel - 1
-					end
-
-					table.insert(lines, string.rep("\t", indentLevel) .. trimmed)
-
-					local shouldIndent = (string.match(trimmed, "then%s*$") or
-						string.match(trimmed, "do%s*$") or
-						string.match(trimmed, "repeat%s*$") or
-						string.match(trimmed, "{%s*$") or
-						(string.match(trimmed, "^function%s*%(") and not string.match(trimmed, "end%s*$")) or
-						(string.match(trimmed, "=%s*function%s*%(") and not string.match(trimmed, "end%s*$")))
-
-					if shouldIndent then
-						indentLevel = indentLevel + 1
-					end
-
-					if string.match(trimmed, "^else%s*$") or string.match(trimmed, "^elseif%s") then
-						indentLevel = indentLevel + 1
-					end
-				end
-			end
-
-			code = table.concat(lines, "\n")
-		end
-		code = string.gsub(code, "\n\n\n+", "\n\n")
-		code = string.gsub(code, "[ \t]+\n", "\n")
-		code = string.gsub(code, "[ \t]+$", "")
-		code = string.gsub(code, ";%s*\n", "\n")
+		code = string.gsub(code, 'game%.TweenService', "game:GetService('TweenService')")
+		code = string.gsub(code, "\n\n\n+", "\n\n") 
+		code = string.gsub(code, "[ \t]+\n", "\n") 
+		code = string.gsub(code, "[ \t]+$", "")     
+		code = string.gsub(code, ";%s*\n", "\n")     
 
 		return code
 	end)
