@@ -2948,93 +2948,6 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 
 	local getbytecode
 
---// this uses the rescripted code to fix alot of issues with it
---// example: l_v3_SpeedMultiplier_0 --> SpeedMultiplier
-local function lookgreat(code)
-	if not code or type(code) ~= "string" or #code < 10 then
-		print("Bro </3")
-		return code
-	end
-
-	local success, result = pcall(function()
-        --// my fucking 5 key broke THERES TOO MANY PRECENTS
-		code = string.gsub(code, "%f[%w_]l_v%d+_([%w_]+)_%d+%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]l_([%w_]+)_%d+%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]v%d+_([%w_]+)%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]u%d+_([%w_]+)%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]p%d+_([%w_]+)%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]t%d+_([%w_]+)%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]i%d+_([%w_]+)%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]a%d+_([%w_]+)%f[^%w_]", "%1")
-		code = string.gsub(code, "%f[%w_]f%d+_([%w_]+)%f[^%w_]", "%1")
-		code = string.gsub(code, ";(%s*\n)", ",%1")
-		code = string.gsub(code, ";(%s*})", ",%1") 
-		code = string.gsub(code, ";(%s*$)", ",%1") 
-		code = string.gsub(code, ";(%s*\n)", "\n") 
-		local returnPattern = "^%s*return%s+{(.-)}\n*$"
-		if string.match(code, returnPattern) then
-			if string.match(code, "DisplayName") or string.match(code, "Animations") or 
-			   string.match(code, "Description") or string.match(code, "Price") or
-			   string.match(code, "Icon") or string.match(code, "Damage") or
-			   string.match(code, "Config") then
-				code = string.gsub(code, "^(%s*)return%s+", "%1local Config = ")
-				if not string.match(code, "\nreturn Config") then
-					code = code .. "\n\nreturn Config"
-				end
-			end
-		end
-		
-		code = string.gsub(code, '%%%*', '%%s') 
-		code = string.gsub(code, ",([^%s\n])", ", %1")
-		code = string.gsub(code, "(%w)=([^=])", "%1 = %2")
-		code = string.gsub(code, "([^=<>~!])=(%w)", "%1= %2")
-		code = string.gsub(code, "(%d)%+(%d)", "%1 + %2")
-		code = string.gsub(code, "(%d)%-(%d)", "%1 - %2")
-		code = string.gsub(code, "(%d)%*(%d)", "%1 * %2")
-		code = string.gsub(code, "(%d)/(%d)", "%1 / %2")
-		code = string.gsub(code, "\n(%s*)local%s+function%s+", "\n\n%1local function ")
-		code = string.gsub(code, "\n(%s*)function%s+", "\n\n%1function ")
-		code = string.gsub(code, "\n(if%s+)", "\n\n%1")
-		code = string.gsub(code, "\n(for%s+)", "\n\n%1")
-		code = string.gsub(code, "\n(while%s+)", "\n\n%1")
-		code = string.gsub(code, "(end)(\n%s*[^%s])", "%1\n\n%2") --// dude its fucking 1:42 am let me sleep
-		code = string.gsub(code, "([^%s])%-%-", "%1 --") 
-		code = string.gsub(code, "%)then", ") then")
-		code = string.gsub(code, "(%w)then", "%1 then")
-		code = string.gsub(code, "%)do", ") do")
-		code = string.gsub(code, "(%w)do([%s\n])", "%1 do%2")
-		code = string.gsub(code, ":(%w+)%s+%(", ":%1(")
-		code = string.gsub(code, "%.(%w+)%s+%(", ".%1(")
-		code = string.gsub(code, "function%s+([%w_]+)%s+%(", "function %1(")
-		code = string.gsub(code, "(\n%s*)return%s*\n%s*end", "%1return\n%1end")
-		code = string.gsub(code, "elseif%(", "elseif (")
-		code = string.gsub(code, "if%(", "if (")
-		code = string.gsub(code, "while%(", "while (")
-		code = string.gsub(code, "return\n%s*else", "return\nelse")
-		code = string.gsub(code, "\n\n\n+", "\n\n")
-		code = string.gsub(code, "[ \t]+\n", "\n")
-		code = string.gsub(code, "[ \t]+$", "")
-		code = string.gsub(code, "^%s*\n+", "")
-		code = string.gsub(code, "%s*$", "\n")
-		code = string.gsub(code, "{%s+}", "{}")
-		code = string.gsub(code, "=%s+{%s*}", " = {}")
-		code = string.gsub(code, "%(  +", "(")
-		code = string.gsub(code, "  +%)", ")")
-		code = string.gsub(code, "1e999", "math.huge")
-		code = string.gsub(code, "task%.delay%s*%(", "task.delay(")
-		code = string.gsub(code, "task%.spawn%s*%(", "task.spawn(")
-		code = string.gsub(code, "task%.wait%s*%(", "task.wait(")
-		return code
-	end)
-	
-	if not success then
-		print("decomp failed during lookgreat")
-		return code
-	end
-	return timcheese(result) or result or code
-end
-
---// fixes a TON of issues that even johnpork, rescriptcode, and lookgreat dont fix.
 local function timcheese(code)
 	if not code or type(code) ~= "string" or #code < 10 then
 		return code
@@ -3181,6 +3094,93 @@ local function timcheese(code)
 	return result
 end
 
+--// this uses the rescripted code to fix alot of issues with it
+--// example: l_v3_SpeedMultiplier_0 --> SpeedMultiplier
+local function lookgreat(code)
+	if not code or type(code) ~= "string" or #code < 10 then
+		print("Bro </3")
+		return code
+	end
+
+	local success, result = pcall(function()
+        --// my fucking 5 key broke THERES TOO MANY PRECENTS
+		code = string.gsub(code, "%f[%w_]l_v%d+_([%w_]+)_%d+%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]l_([%w_]+)_%d+%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]v%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]u%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]p%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]t%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]i%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]a%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, "%f[%w_]f%d+_([%w_]+)%f[^%w_]", "%1")
+		code = string.gsub(code, ";(%s*\n)", ",%1")
+		code = string.gsub(code, ";(%s*})", ",%1") 
+		code = string.gsub(code, ";(%s*$)", ",%1") 
+		code = string.gsub(code, ";(%s*\n)", "\n") 
+		local returnPattern = "^%s*return%s+{(.-)}\n*$"
+		if string.match(code, returnPattern) then
+			if string.match(code, "DisplayName") or string.match(code, "Animations") or 
+			   string.match(code, "Description") or string.match(code, "Price") or
+			   string.match(code, "Icon") or string.match(code, "Damage") or
+			   string.match(code, "Config") then
+				code = string.gsub(code, "^(%s*)return%s+", "%1local Config = ")
+				if not string.match(code, "\nreturn Config") then
+					code = code .. "\n\nreturn Config"
+				end
+			end
+		end
+		
+		code = string.gsub(code, '%%%*', '%%s') 
+		code = string.gsub(code, ",([^%s\n])", ", %1")
+		code = string.gsub(code, "(%w)=([^=])", "%1 = %2")
+		code = string.gsub(code, "([^=<>~!])=(%w)", "%1= %2")
+		code = string.gsub(code, "(%d)%+(%d)", "%1 + %2")
+		code = string.gsub(code, "(%d)%-(%d)", "%1 - %2")
+		code = string.gsub(code, "(%d)%*(%d)", "%1 * %2")
+		code = string.gsub(code, "(%d)/(%d)", "%1 / %2")
+		code = string.gsub(code, "\n(%s*)local%s+function%s+", "\n\n%1local function ")
+		code = string.gsub(code, "\n(%s*)function%s+", "\n\n%1function ")
+		code = string.gsub(code, "\n(if%s+)", "\n\n%1")
+		code = string.gsub(code, "\n(for%s+)", "\n\n%1")
+		code = string.gsub(code, "\n(while%s+)", "\n\n%1")
+		code = string.gsub(code, "(end)(\n%s*[^%s])", "%1\n\n%2") --// dude its fucking 1:42 am let me sleep
+		code = string.gsub(code, "([^%s])%-%-", "%1 --") 
+		code = string.gsub(code, "%)then", ") then")
+		code = string.gsub(code, "(%w)then", "%1 then")
+		code = string.gsub(code, "%)do", ") do")
+		code = string.gsub(code, "(%w)do([%s\n])", "%1 do%2")
+		code = string.gsub(code, ":(%w+)%s+%(", ":%1(")
+		code = string.gsub(code, "%.(%w+)%s+%(", ".%1(")
+		code = string.gsub(code, "function%s+([%w_]+)%s+%(", "function %1(")
+		code = string.gsub(code, "(\n%s*)return%s*\n%s*end", "%1return\n%1end")
+		code = string.gsub(code, "elseif%(", "elseif (")
+		code = string.gsub(code, "if%(", "if (")
+		code = string.gsub(code, "while%(", "while (")
+		code = string.gsub(code, "return\n%s*else", "return\nelse")
+		code = string.gsub(code, "\n\n\n+", "\n\n")
+		code = string.gsub(code, "[ \t]+\n", "\n")
+		code = string.gsub(code, "[ \t]+$", "")
+		code = string.gsub(code, "^%s*\n+", "")
+		code = string.gsub(code, "%s*$", "\n")
+		code = string.gsub(code, "{%s+}", "{}")
+		code = string.gsub(code, "=%s+{%s*}", " = {}")
+		code = string.gsub(code, "%(  +", "(")
+		code = string.gsub(code, "  +%)", ")")
+		code = string.gsub(code, "1e999", "math.huge")
+		code = string.gsub(code, "task%.delay%s*%(", "task.delay(")
+		code = string.gsub(code, "task%.spawn%s*%(", "task.spawn(")
+		code = string.gsub(code, "task%.wait%s*%(", "task.wait(")
+		return code
+	end)
+	
+	if not success then
+		print("decomp failed during lookgreat")
+		return code
+	end
+	return timcheese(result) or result or code
+end
+
+--// fixes a TON of issues that even johnpork, rescriptcode, and lookgreat dont fix.
 --// rescripts the fucking bad johnporked code.
 local function rescriptcode(code, skipIndent)
 	if not code or type(code) ~= "string" or #code < 10 then
